@@ -52,8 +52,8 @@
         </div>
         <div class="card" style="display:flex; gap:8px; align-items:center;">
             <span style="font-size:12px; font-weight:bold; color:var(--primary);" id="selected-date-label"></span>
-            <span style="font-size:11px;">⚖️ <input type="number" id="weight" step="0.1" style="width:45px"></span>
-            <span style="font-size:11px;">💧 <input type="number" id="fat" step="0.1" style="width:45px"></span>
+            <span style="font-size:11px;">⚖️ <input type="number" id="weight" step="0.1" style="width:45px"> kg</span>
+            <span style="font-size:11px;">💧 <input type="number" id="fat" step="0.1" style="width:45px"> %</span>
             <button onclick="saveWorkout()" style="margin-left:auto; background:var(--save); color:white; border:none; padding:8px 12px; border-radius:6px; font-size:12px;">💾 儲存</button>
         </div>
         <div id="train-list"></div>
@@ -68,68 +68,64 @@
         <button class="btn-action" onclick="createNewTemplate()">+ 建立全新模板組</button>
         <div id="library-container" style="margin-top:15px;"></div>
     </div>
+
+    <div id="page-charts" class="tab-content">
+        <div class="card">
+            <h3 style="margin:0">📊 訓練強度追蹤</h3>
+            <select id="exercise-selector" onchange="renderExerciseChart()" style="margin: 10px 0; width: 100%; padding: 8px; border-radius: 6px;"></select>
+            <div style="height:300px"><canvas id="progressChart"></canvas></div>
+        </div>
+    </div>
 </div>
 
 <div class="bottom-nav">
-    <div class="nav-item active" onclick="switchTab('train', this)">🏋️ 訓練紀錄</div>
-    <div class="nav-item" onclick="switchTab('library', this)">📋 模板管理</div>
+    <div class="nav-item active" onclick="switchTab('train', this)">🏋️ 訓練</div>
+    <div class="nav-item" onclick="switchTab('library', this)">📋 模板</div>
+    <div class="nav-item" onclick="switchTab('charts', this)">📊 分析</div>
 </div>
 
 <script>
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzdppLufdX1_LV4Tz1Jo8OOiBswmVY2vEiGS19-fYQGVhLtyuqbJ1cnCPJ0c_rkC7y6oQ/exec'; 
     let selectedDate = new Date().toISOString().split('T')[0];
     let allData = {}; let templates = []; let currentMonth = new Date();
+    let myChart = null;
 
     function switchTab(tabId, el) {
         document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
         document.getElementById('page-' + tabId).classList.add('active');
         el.classList.add('active');
+        if(tabId === 'charts') updateExSelector();
     }
 
-    // --- 核心優化：第二動作決定連動引擎 ---
     function renderList(targetId, exArr, tplId = null) {
         const list = document.getElementById(targetId); list.innerHTML = '';
-        
-        let charIndex = 0; // A, B, C...
-        let displayLabels = []; // 儲存計算後的標籤
-
-        // 第一次掃描：計算標籤
+        let charIndex = 0;
+        let displayLabels = [];
         for (let i = 0; i < exArr.length; i++) {
             if (i > 0 && exArr[i].isSS) {
-                // 如果目前的動作點了連動，它會往上勾
                 let prevLabel = displayLabels[i-1];
-                
-                // 如果前一個已經是 SS (例如 A1)，這一個就變 A2
                 if (prevLabel.length > 1) {
-                    let num = parseInt(prevLabel.substring(1)) + 1;
-                    displayLabels[i] = prevLabel.substring(0, 1) + num;
+                    displayLabels[i] = prevLabel.substring(0,1) + (parseInt(prevLabel.substring(1))+1);
                 } else {
-                    // 如果前一個原本是獨立動作 (例如 A)，把它改成 A1，自己變 A2
                     displayLabels[i-1] = prevLabel + "1";
                     displayLabels[i] = prevLabel + "2";
                 }
             } else {
-                // 獨立動作，字母跳號
                 if (i > 0) charIndex++;
                 displayLabels[i] = String.fromCharCode(65 + charIndex);
             }
         }
 
-        // 第二次掃描：渲染畫面
         exArr.forEach((ex, exIdx) => {
             const label = displayLabels[exIdx];
-            const isSSPart = label.length > 1; // 只要有數字就是超級組的一部分
-
             const mod = document.createElement('div');
-            mod.className = `ex-module ${isSSPart ? 'ss-active' : ''}`;
+            mod.className = `ex-module ${label.length > 1 ? 'ss-active' : ''}`;
             mod.innerHTML = `
                 <div class="module-header">
                     <input style="font-weight:bold; border:none; background:transparent; font-size:13px;" value="${ex.name}" onchange="uEx('${targetId}',${tplId},${exIdx},'name',this.value)">
                     <div style="font-size:10px;">
-                        <span onclick="tSS('${targetId}',${tplId},${exIdx})" style="cursor:pointer; color:${ex.isSS?'var(--save)':'#888'}">
-                            ${ex.isSS?'🔗 已連動':'🔗 連動上動'}
-                        </span> | 
+                        <span onclick="tSS('${targetId}',${tplId},${exIdx})" style="cursor:pointer; color:${ex.isSS?'var(--save)':'#888'}">${ex.isSS?'🔗 已連動':'🔗 連動超級組'}</span> | 
                         <span onclick="aS('${targetId}',${tplId},${exIdx})" style="cursor:pointer">➕ 增組</span> | 
                         <span onclick="dE('${targetId}',${tplId},${exIdx})" style="color:red; cursor:pointer">🗑️</span>
                     </div>
@@ -151,34 +147,37 @@
         });
     }
 
-    // --- 其餘邏輯保持不變 ---
-    function uEx(tid, tplId, ei, f, v) { let a = tplId ? templates.find(t=>t.id===tplId).exercises : allData[selectedDate].workout; a[ei][f] = v; }
-    function uS(tid, tplId, ei, si, f, v) { let a = tplId ? templates.find(t=>t.id===tplId).exercises : allData[selectedDate].workout; a[ei].sets[si][f] = v; }
-    function aS(tid, tplId, ei) { let a = tplId ? templates.find(t=>t.id===tplId).exercises : allData[selectedDate].workout; a[ei].sets.push({w:'',r:'',p:'',n:'',d:false}); tplId?renderLibrary():loadDateData(); }
-    function tSS(tid, tplId, ei) { 
-        if (ei === 0) return alert("第一個動作不能連動喔！請在下一個動作點擊連動。");
-        let a = tplId ? templates.find(t=>t.id===tplId).exercises : allData[selectedDate].workout; 
-        a[ei].isSS = !a[ei].isSS; 
-        tplId?renderLibrary():loadDateData(); 
+    // 更新圖表下拉選單
+    function updateExSelector() {
+        const sel = document.getElementById('exercise-selector');
+        const names = new Set();
+        Object.values(allData).forEach(d => d.workout.forEach(e => names.add(e.name)));
+        sel.innerHTML = '<option value="">-- 請選擇動作 --</option>';
+        Array.from(names).sort().forEach(n => sel.innerHTML += `<option value="${n}">${n}</option>`);
     }
-    function dE(tid, tplId, ei) { let a = tplId ? templates.find(t=>t.id===tplId).exercises : allData[selectedDate].workout; a.splice(ei,1); tplId?renderLibrary():loadDateData(); }
-    function removeSetLogic(tid, tplId, exIdx, sIdx) {
-        let a = tplId ? templates.find(t=>t.id===tplId).exercises : allData[selectedDate].workout;
-        if(a[exIdx].sets.length > 1) { a[exIdx].sets.splice(sIdx, 1); tplId?renderLibrary():loadDateData(); }
+
+    // 渲染圖表
+    function renderExerciseChart() {
+        const name = document.getElementById('exercise-selector').value;
+        if(!name) return;
+        const pts = [];
+        Object.keys(allData).sort().forEach(date => {
+            const ex = allData[date].workout.find(e => e.name === name);
+            if(ex) {
+                const maxW = Math.max(...ex.sets.map(s => parseFloat(s.w) || 0));
+                if(maxW > 0) pts.push({ x: date, y: maxW });
+            }
+        });
+        const ctx = document.getElementById('progressChart').getContext('2d');
+        if(myChart) myChart.destroy();
+        myChart = new Chart(ctx, {
+            type: 'line',
+            data: { datasets: [{ label: name + ' (Max kg)', data: pts, borderColor: '#8C7851', backgroundColor: 'rgba(140, 120, 81, 0.1)', fill: true, tension: 0.3 }] },
+            options: { responsive: true, maintainAspectRatio: false, scales: { x: { display: true }, y: { beginAtZero: false } } }
+        });
     }
-    function addExLogic(tid, tplId) {
-        if(!allData[selectedDate]) allData[selectedDate] = {workout:[], weight:'', fat:''};
-        let a = tplId ? templates.find(t=>t.id===tplId).exercises : allData[selectedDate].workout;
-        a.push({name:'新動作',isSS:false,sets:[{w:'',r:'',p:'',n:'',d:false}]});
-        tplId?renderLibrary():loadDateData();
-    }
-    function tC(ei, si) { allData[selectedDate].workout[ei].sets[si].d = !allData[selectedDate].workout[ei].sets[si].d; loadDateData(); }
-    function applyTpl(id) {
-        if(!allData[selectedDate]) allData[selectedDate]={workout:[], weight:'', fat:''};
-        allData[selectedDate].workout = JSON.parse(JSON.stringify(templates.find(t=>t.id===id).exercises));
-        switchTab('train', document.querySelectorAll('.nav-item')[0]);
-        loadDateData(); renderCalendar();
-    }
+
+    // 其他邏輯
     async function syncAll() {
         showLoader(true);
         try {
@@ -192,6 +191,7 @@
         } catch(e) {}
         showLoader(false);
     }
+    
     async function saveWorkout() {
         showLoader(true);
         const payload = { type: "workout", date: selectedDate, workout: allData[selectedDate]?.workout || [], weight: document.getElementById('weight').value, fat: document.getElementById('fat').value };
@@ -199,41 +199,29 @@
         await syncAll();
         showLoader(false);
     }
+
     async function saveTemplates() {
         showLoader(true);
         await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ type: "template", content: templates }) });
-        alert("模板同步成功");
+        alert("同步成功");
         showLoader(false);
     }
-    function renderCalendar() {
-        const grid = document.getElementById('calendar-days'); document.getElementById('month-label').innerText = `${currentMonth.getFullYear()}年 ${currentMonth.getMonth()+1}月`;
-        grid.innerHTML = ''; const first = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).getDay(); const days = new Date(currentMonth.getFullYear(), currentMonth.getMonth()+1, 0).getDate();
-        for(let i=0; i<first; i++) grid.appendChild(document.createElement('div'));
-        for(let d=1; d<=days; d++) {
-            const ds = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-            const el = document.createElement('div'); el.className = 'calendar-day' + (ds===selectedDate?' active':'') + (allData[ds]?' has-data':'');
-            el.innerText = d; el.onclick = () => { selectedDate = ds; renderCalendar(); loadDateData(); }; grid.appendChild(el);
-        }
-    }
+
+    function uEx(tid,tplId,ei,f,v) { let a = tplId?templates.find(t=>t.id===tplId).exercises : allData[selectedDate].workout; a[ei][f]=v; }
+    function uS(tid,tplId,ei,si,f,v) { let a = tplId?templates.find(t=>t.id===tplId).exercises : allData[selectedDate].workout; a[ei].sets[si][f]=v; }
+    function aS(tid,tplId,ei) { let a = tplId?templates.find(t=>t.id===tplId).exercises : allData[selectedDate].workout; a[ei].sets.push({w:'',r:'',p:'',n:'',d:false}); tplId?renderLibrary():loadDateData(); }
+    function tSS(tid,tplId,ei) { if(ei===0)return; let a=tplId?templates.find(t=>t.id===tplId).exercises:allData[selectedDate].workout; a[ei].isSS=!a[ei].isSS; tplId?renderLibrary():loadDateData(); }
+    function dE(tid,tplId,ei) { let a=tplId?templates.find(t=>t.id===tplId).exercises:allData[selectedDate].workout; a.splice(ei,1); tplId?renderLibrary():loadDateData(); }
+    function removeSetLogic(tid,tplId,exIdx,sIdx) { let a=tplId?templates.find(t=>t.id===tplId).exercises:allData[selectedDate].workout; if(a[exIdx].sets.length>1){a[exIdx].sets.splice(sIdx,1); tplId?renderLibrary():loadDateData();} }
+    function addExLogic(tid,tplId) { if(!allData[selectedDate])allData[selectedDate]={workout:[],weight:'',fat:''}; let a=tplId?templates.find(t=>t.id===tplId).exercises:allData[selectedDate].workout; a.push({name:'新動作',isSS:false,sets:[{w:'',r:'',p:'',n:'',d:false}]}); tplId?renderLibrary():loadDateData(); }
+    function tC(ei,si) { allData[selectedDate].workout[ei].sets[si].d = !allData[selectedDate].workout[ei].sets[si].d; loadDateData(); }
+    function applyTpl(id) { if(!allData[selectedDate])allData[selectedDate]={workout:[],weight:'',fat:''}; allData[selectedDate].workout=JSON.parse(JSON.stringify(templates.find(t=>t.id===id).exercises)); switchTab('train',document.querySelectorAll('.nav-item')[0]); loadDateData(); renderCalendar(); }
     function moveMonth(s) { currentMonth.setMonth(currentMonth.getMonth()+s); renderCalendar(); }
-    function loadDateData() {
-        const d = allData[selectedDate] || { workout: [], weight: '', fat: '' };
-        document.getElementById('weight').value = d.weight || '';
-        document.getElementById('fat').value = d.fat || '';
-        document.getElementById('selected-date-label').innerText = selectedDate;
-        renderList('train-list', d.workout);
-    }
-    function createNewTemplate() { const name = prompt("名稱？"); if(name) { templates.push({id:Date.now(), name:name, exercises:[]}); renderLibrary(); } }
-    function renderLibrary() {
-        const container = document.getElementById('library-container'); container.innerHTML = '';
-        templates.forEach(tpl => {
-            const div = document.createElement('div'); div.className = 'card';
-            div.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center;"><b>💎 ${tpl.name}</b> <button onclick="applyTpl(${tpl.id})" style="background:var(--primary); color:white; border:none; padding:5px 10px; border-radius:4px; font-size:10px;">套用</button></div>
-                <div id="tpl-ex-${tpl.id}"></div><button class="btn-action" style="background:#AAA; font-size:11px; margin-top:10px;" onclick="addExLogic('tpl-ex-${tpl.id}', ${tpl.id})">+ 動作</button>`;
-            container.appendChild(div); renderList(`tpl-ex-${tpl.id}`, tpl.exercises, tpl.id);
-        });
-    }
-    function showLoader(s) { document.getElementById('loader').style.display = s ? 'flex' : 'none'; }
+    function loadDateData() { const d=allData[selectedDate]||{workout:[],weight:'',fat:''}; document.getElementById('weight').value=d.weight||''; document.getElementById('fat').value=d.fat||''; document.getElementById('selected-date-label').innerText=selectedDate; renderList('train-list', d.workout); }
+    function renderCalendar() { const grid=document.getElementById('calendar-days'); document.getElementById('month-label').innerText=`${currentMonth.getFullYear()}年 ${currentMonth.getMonth()+1}月`; grid.innerHTML=''; const first=new Date(currentMonth.getFullYear(),currentMonth.getMonth(),1).getDay(); const days=new Date(currentMonth.getFullYear(),currentMonth.getMonth()+1,0).getDate(); for(let i=0;i<first;i++)grid.appendChild(document.createElement('div')); for(let d=1;d<=days;d++){ const ds=`${currentMonth.getFullYear()}-${String(currentMonth.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`; const el=document.createElement('div'); el.className='calendar-day'+(ds===selectedDate?' active':'')+(allData[ds]?' has-data':''); el.innerText=d; el.onclick=()=>{selectedDate=ds;renderCalendar();loadDateData();}; grid.appendChild(el); } }
+    function createNewTemplate() { const n=prompt("名稱？"); if(n){templates.push({id:Date.now(),name:n,exercises:[]});renderLibrary();} }
+    function renderLibrary() { const c=document.getElementById('library-container'); c.innerHTML=''; templates.forEach(tpl=>{ const d=document.createElement('div'); d.className='card'; d.innerHTML=`<b>💎 ${tpl.name}</b> <button onclick="applyTpl(${tpl.id})" style="float:right">套用</button><div id="tpl-ex-${tpl.id}"></div><button class="btn-action" style="background:#AAA" onclick="addExLogic('tpl-ex-${tpl.id}',${tpl.id})">+動作</button>`; c.appendChild(d); renderList(`tpl-ex-${tpl.id}`, tpl.exercises, tpl.id); }); }
+    function showLoader(s) { document.getElementById('loader').style.display=s?'flex':'none'; }
     window.onload = syncAll;
 </script>
 </body>
