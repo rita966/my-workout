@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>💪🏻 訓練站</title>
+    <style>
+        :root {
+            --bg: #F5F2ED; --card: #FFFFFF; --primary: #8C7851; --accent: #B0A990;
+            --text: #333; --gray: #F0F0F0; --ss-bg: #EAE7DC; --save: #6B705C; --danger: #CC6666;
+        }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
+        .container { width: 100%; max-width: 600px; }
+        
+        /* 控制面板 */
+        .admin-bar { background: white; padding: 12px; border-radius: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .btn { border: none; border-radius: 6px; padding: 8px 10px; cursor: pointer; font-size: 11px; font-weight: bold; }
+        .btn-sync { background: var(--primary); color: white; }
+        .btn-save { background: var(--save); color: white; }
+        .btn-copy { background: #EEE; color: #666; }
+
+        .week-selector { display: flex; gap: 4px; margin-bottom: 10px; width: 100%; }
+        .day-tab { flex: 1; text-align: center; padding: 12px 0; background: #DDD; border-radius: 8px; font-size: 13px; cursor: pointer; }
+        .day-tab.active { background: var(--primary); color: white; }
+
+        .table-header { display: grid; grid-template-columns: 40px 1fr 60px 60px 40px; gap: 4px; padding: 10px 5px; background: var(--primary); color: white; border-radius: 8px 8px 0 0; font-size: 11px; text-align: center; }
+        .ex-module { border: 1px solid #EEE; margin-bottom: 15px; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .ex-row { display: grid; grid-template-columns: 40px 1fr 60px 60px 40px; gap: 4px; padding: 8px 5px; border-bottom: 1px solid #F0F0F0; align-items: center; }
+        .ss-active { background: var(--ss-bg); }
+        
+        input { border: 1px solid #DDD; border-radius: 4px; padding: 6px 2px; text-align: center; font-size: 13px; width: 100%; }
+        .name-input { border: none; text-align: left; font-weight: bold; background: transparent; }
+        
+        .btn-check { height: 32px; width: 32px; border-radius: 4px; border: 1px solid #DDD; background: #EEE; cursor: pointer; }
+        .btn-check.done { background: var(--save); color: white; border: none; }
+
+        .module-tools { display: flex; gap: 10px; padding: 5px 10px; background: #FAFAFA; border-bottom: 1px solid #EEE; font-size: 10px; color: #AAA; }
+        .add-ex-btn { background: var(--primary); color: white; width: 55px; height: 55px; border-radius: 50%; font-size: 30px; position: fixed; bottom: 20px; right: 20px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 100; }
+        
+        .loading { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 1000; font-weight: bold; color: var(--primary); }
+    </style>
+</head>
+<body>
+
+<div id="loader" class="loading">雲端傳輸中...</div>
+
+<div class="container">
+    <div class="admin-bar">
+        <div id="timer-display" style="font-weight:bold; color:var(--primary); font-size:14px;">⏱️ 00:00</div>
+        <div style="display:flex; gap:5px;">
+            <button class="btn btn-copy" onclick="copyToday()">複製天</button>
+            <button class="btn btn-copy" onclick="pasteToday()">貼上天</button>
+            <button class="btn btn-sync" onclick="loadFromCloud()">拉取</button>
+            <button class="btn btn-save" onclick="saveToCloud()">儲存發佈</button>
+        </div>
+    </div>
+
+    <div class="week-selector">
+        <div class="day-tab active" onclick="changeDay(0)">一</div>
+        <div class="day-tab" onclick="changeDay(1)">二</div>
+        <div class="day-tab" onclick="changeDay(2)">三</div>
+        <div class="day-tab" onclick="changeDay(3)">四</div>
+        <div class="day-tab" onclick="changeDay(4)">五</div>
+        <div class="day-tab" onclick="changeDay(5)">六</div>
+        <div class="day-tab" onclick="changeDay(6)">日</div>
+    </div>
+
+    <div class="table-header">
+        <div>項次</div><div>動作名稱</div><div>重量</div><div>次數</div><div>✓</div>
+    </div>
+    <div id="exercise-list"></div>
+</div>
+
+<button class="add-ex-btn" onclick="addExercise()">+</button>
+
+<script>
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzdppLufdX1_LV4Tz1Jo8OOiBswmVY2vEiGS19-fYQGVhLtyuqbJ1cnCPJ0c_rkC7y6oQ/exec';
+
+    let currentDay = 0;
+    let workoutData = Array(7).fill().map(() => []);
+    let clipboard = null; // 暫存剪貼簿
+
+    // 抓取雲端
+    async function loadFromCloud() {
+        if(SCRIPT_URL.includes('你的')) { alert('請先設定 SCRIPT_URL'); return; }
+        showLoader(true);
+        try {
+            const response = await fetch(SCRIPT_URL);
+            const rawData = await response.json();
+            workoutData = Array(7).fill().map(() => []);
+            rawData.slice(1).forEach(row => {
+                const d = parseInt(row[0]);
+                workoutData[d].push({
+                    name: row[1], rest: row[2], isSS: row[3] == 1,
+                    sets: JSON.parse(row[4])
+                });
+            });
+            render();
+        } catch (e) { alert("讀取失敗"); }
+        showLoader(false);
+    }
+
+    // 儲存雲端
+    async function saveToCloud() {
+        showLoader(true);
+        const flatData = [];
+        workoutData.forEach((dayArr, dIdx) => {
+            dayArr.forEach(ex => {
+                flatData.push({ day: dIdx, name: ex.name, rest: ex.rest, isSS: ex.isSS ? 1 : 0, sets: ex.sets });
+            });
+        });
+        try {
+            await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(flatData) });
+            alert("雲端同步成功！");
+        } catch (e) { alert("儲存失敗"); }
+        showLoader(false);
+    }
+
+    // 複製與貼上功能
+    function copyToday() {
+        clipboard = JSON.stringify(workoutData[currentDay]);
+        alert("已複製今日課表模組");
+    }
+    function pasteToday() {
+        if(!clipboard) { alert("請先複製某一天的課表"); return; }
+        if(confirm("要覆蓋今天的課表嗎？")) {
+            workoutData[currentDay] = JSON.parse(clipboard);
+            render();
+        }
+    }
+
+    function render() {
+        const list = document.getElementById('exercise-list');
+        list.innerHTML = '';
+        const dayExs = workoutData[currentDay];
+        let charCode = 65; let ssCounter = 0;
+
+        dayExs.forEach((ex, exIdx) => {
+            if (exIdx > 0 && !ex.isSS) { charCode++; ssCounter = 1; }
+            else { ssCounter++; }
+            let itemIdx = String.fromCharCode(charCode) + ssCounter;
+
+            const mod = document.createElement('div');
+            mod.className = 'ex-module';
+            mod.innerHTML = `
+                <div class="module-tools">
+                    <span onclick="toggleSS(${exIdx})" style="cursor:pointer; ${ex.isSS?'color:var(--primary); font-weight:bold;':''}">🔗 超級組</span> |
+                    <span onclick="addSet(${exIdx})" style="cursor:pointer;">➕ 增組</span> |
+                    <span onclick="deleteEx(${exIdx})" style="cursor:pointer; color:var(--danger);">🗑️ 刪除</span>
+                </div>
+                ${ex.sets.map((s, sIdx) => `
+                    <div class="ex-row ${ex.isSS ? 'ss-active' : ''}">
+                        <div style="text-align:center; font-weight:bold;">${sIdx === 0 ? itemIdx : ''}</div>
+                        <div>${sIdx === 0 ? `<input class="name-input" value="${ex.name}" onchange="updateEx(${exIdx},'name',this.value)">` : ''}</div>
+                        <div><input type="text" value="${s.w}" placeholder="kg" oninput="updateSet(${exIdx},${sIdx},'w',this.value)"></div>
+                        <div><input type="text" value="${s.r}" placeholder="次" oninput="updateSet(${exIdx},${sIdx},'r',this.value)"></div>
+                        <div style="text-align:center;"><button class="btn-check ${s.d?'done':''}" onclick="toggleCheck(${exIdx},${sIdx})">✓</button></div>
+                    </div>
+                `).join('')}
+            `;
+            list.appendChild(mod);
+        });
+    }
+
+    // 基本邏輯
+    function changeDay(idx) {
+        currentDay = idx;
+        document.querySelectorAll('.day-tab').forEach((t, i) => t.className = i === idx ? 'day-tab active' : 'day-tab');
+        render();
+    }
+    function addExercise() { workoutData[currentDay].push({ name: '新動作', rest: 60, isSS: false, sets: [{w:'', r:'', d:false}] }); render(); }
+    function addSet(exIdx) { workoutData[currentDay][exIdx].sets.push({w:'', r:'', d:false}); render(); }
+    function deleteEx(idx) { if(confirm("確定刪除動作？")) { workoutData[currentDay].splice(idx,1); render(); } }
+    function updateEx(idx, f, v) { workoutData[currentDay][idx][f] = v; }
+    function updateSet(exIdx, sIdx, f, v) { workoutData[currentDay][exIdx].sets[sIdx][f] = v; }
+    function toggleSS(idx) { workoutData[currentDay][idx].isSS = !workoutData[currentDay][idx].isSS; render(); }
+    function toggleCheck(exIdx, sIdx) { workoutData[currentDay][exIdx].sets[sIdx].d = !workoutData[currentDay][exIdx].sets[sIdx].d; render(); }
+    function showLoader(show) { document.getElementById('loader').style.display = show ? 'flex' : 'none'; }
+
+    window.onload = loadFromCloud;
+</script>
+</body>
+</html>
