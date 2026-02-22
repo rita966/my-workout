@@ -29,12 +29,11 @@
         .ex-module { border: 1px solid #EEE; margin-bottom: 8px; background: white; border-radius: 10px; overflow: hidden; transition: 0.2s; }
         .module-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #F8F8F8; border-bottom: 1px solid #EEE; }
         
-        /* 表格欄位設定：組別 | kg | 次 | RPE | 備註 | ✓ | 刪除 */
         .table-header { display: grid; grid-template-columns: 35px 45px 45px 40px 1fr 30px 30px; gap: 4px; padding: 5px; background: var(--primary); color: white; font-size: 10px; text-align: center; }
         .ex-row { display: grid; grid-template-columns: 35px 45px 45px 40px 1fr 30px 30px; gap: 4px; padding: 6px 5px; align-items: center; border-bottom: 1px solid #F0F0F0; }
         
-        /* 超級組視覺樣式 */
-        .ss-active { border-left: 8px solid var(--ss-border); background: var(--ss-bg); border-radius: 4px; margin-bottom: 2px; }
+        /* 超級組視覺強化 */
+        .ss-active { border-left: 8px solid var(--ss-border); background: var(--ss-bg); border-radius: 4px; margin-bottom: 4px; }
         
         input { border: 1px solid #DDD; border-radius: 4px; padding: 5px 2px; text-align: center; font-size: 12px; width: 100%; box-sizing: border-box; background: white; }
         .btn-check { height: 26px; width: 26px; border-radius: 4px; border: 1px solid #DDD; background: #EEE; cursor: pointer; font-size: 12px; }
@@ -61,12 +60,12 @@
         </div>
         <div class="card" style="display:flex; gap:8px; align-items:center;">
             <span style="font-size:12px; font-weight:bold; color:var(--primary);" id="selected-date-label"></span>
-            <span style="font-size:11px;">⚖️ <input type="number" id="weight" step="0.1" style="width:45px"></span>
-            <span style="font-size:11px;">💧 <input type="number" id="fat" step="0.1" style="width:45px"></span>
+            <span style="font-size:11px;">⚖️ <input type="number" id="weight" step="0.1" style="width:45px"> kg</span>
+            <span style="font-size:11px;">💧 <input type="number" id="fat" step="0.1" style="width:45px"> %</span>
             <button onclick="saveWorkout()" style="margin-left:auto; background:var(--save); color:white; border:none; padding:8px 12px; border-radius:6px; font-size:12px; font-weight:bold;">💾 儲存</button>
         </div>
         <div id="train-list"></div>
-        <button class="btn-action" style="background:#888; margin-top:10px;" onclick="addExLogic('train-list', null)">+ 新增手動動作</button>
+        <button class="btn-action" style="background:#888; margin-top:10px;" onclick="addExLogic('train-list', null)">+ 手動新增動作</button>
     </div>
 
     <div id="page-library" class="tab-content">
@@ -77,7 +76,7 @@
         <button class="btn-action" onclick="createNewTemplate()">+ 建立全新模板組</button>
         <div id="library-container" style="margin-top:15px;"></div>
     </div>
-
+    
     <div id="page-charts" class="tab-content">
         <div class="card">
             <h3 style="margin:0">📊 進步分析</h3>
@@ -94,7 +93,7 @@
 </div>
 
 <script>
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzdppLufdX1_LV4Tz1Jo8OOiBswmVY2vEiGS19-fYQGVhLtyuqbJ1cnCPJ0c_rkC7y6oQ/exec'; // <--- 填入你的 Apps Script 網址
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzdppLufdX1_LV4Tz1Jo8OOiBswmVY2vEiGS19-fYQGVhLtyuqbJ1cnCPJ0c_rkC7y6oQ/exec'; 
     let selectedDate = new Date().toISOString().split('T')[0];
     let allData = {}; let templates = []; let currentMonth = new Date();
     let myChart = null;
@@ -107,34 +106,31 @@
         if(tabId === 'charts') updateExSelector();
     }
 
-    // --- 超級組自動編號邏輯 (核心更新) ---
+    // --- 核心更新：支援連續超級組編號邏輯 ---
     function renderList(targetId, exArr, tplId = null) {
         const list = document.getElementById(targetId); list.innerHTML = '';
-        let groupChar = 65; // 從 'A' 開始
+        let groupCharIndex = 0; 
         let ssCounter = 0;
-        let lastWasSS = false;
 
         exArr.forEach((ex, exIdx) => {
             let itemLabel = "";
             
+            // 判斷邏輯：
+            // 如果當前是 SS
             if (ex.isSS) {
-                if (!lastWasSS) { 
-                    // 如果前一個不是 SS，代表新的 SS 組開始
-                    ssCounter = 1; 
-                } else { 
-                    // 如果前一個也是 SS，繼續累加
-                    ssCounter++; 
+                // 如果是第一個動作，或是前一個動作不是 SS，就跳下一個字母並從 1 開始
+                if (exIdx === 0 || !exArr[exIdx-1].isSS) {
+                    if (exIdx > 0) groupCharIndex++;
+                    ssCounter = 1;
+                } else {
+                    // 如果前一個也是 SS，計數器 +1
+                    ssCounter++;
                 }
-                itemLabel = String.fromCharCode(groupChar) + ssCounter;
-                lastWasSS = true;
+                itemLabel = String.fromCharCode(65 + groupCharIndex) + ssCounter;
             } else {
-                if (lastWasSS) {
-                    // 如果前一個是 SS，現在結束了，字母要跳號
-                    groupChar++;
-                }
-                itemLabel = String.fromCharCode(groupChar);
-                groupChar++; // 普通動作佔用一個英文字母
-                lastWasSS = false;
+                // 如果當前不是 SS，字母跳號，且不顯示數字
+                if (exIdx > 0) groupCharIndex++;
+                itemLabel = String.fromCharCode(65 + groupCharIndex);
             }
 
             const mod = document.createElement('div');
@@ -165,7 +161,7 @@
         });
     }
 
-    // --- 刪除組數邏輯 ---
+    // --- 刪除單組邏輯 ---
     function removeSetLogic(tid, tplId, exIdx, sIdx) {
         let a = tplId ? templates.find(t=>t.id===tplId).exercises : allData[selectedDate].workout;
         if(a[exIdx].sets.length > 1) {
@@ -174,7 +170,7 @@
         }
     }
 
-    // --- 雲端同步與其他功能 ---
+    // --- 基礎同步與功能 ---
     async function syncAll() {
         showLoader(true);
         try {
@@ -209,12 +205,11 @@
         showLoader(true);
         try {
             await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ type: "template", content: templates }) });
-            alert("模板已更新至雲端");
+            alert("模板已更新");
         } catch(e) { alert("儲存失敗"); }
         showLoader(false);
     }
 
-    // --- 模板與編輯功能 ---
     function uEx(tid, tplId, ei, f, v) { let a = tplId ? templates.find(t=>t.id===tplId).exercises : allData[selectedDate].workout; a[ei][f] = v; }
     function uS(tid, tplId, ei, si, f, v) { let a = tplId ? templates.find(t=>t.id===tplId).exercises : allData[selectedDate].workout; a[ei].sets[si][f] = v; }
     function aS(tid, tplId, ei) { let a = tplId ? templates.find(t=>t.id===tplId).exercises : allData[selectedDate].workout; a[ei].sets.push({w:'',r:'',p:'',n:'',d:false}); tplId?renderLibrary():loadDateData(); }
@@ -240,7 +235,7 @@
         const container = document.getElementById('library-container'); container.innerHTML = '';
         templates.forEach(tpl => {
             const div = document.createElement('div'); div.className = 'card';
-            div.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center;"><b>💎 ${tpl.name}</b> <button onclick="applyTpl(${tpl.id})" style="background:var(--primary); color:white; border:none; padding:5px 10px; border-radius:4px; font-size:10px;">套用至此日</button></div>
+            div.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center;"><b>💎 ${tpl.name}</b> <button onclick="applyTpl(${tpl.id})" style="background:var(--primary); color:white; border:none; padding:5px 10px; border-radius:4px; font-size:10px;">套用至選定日期</button></div>
                 <div id="tpl-ex-${tpl.id}"></div><button class="btn-action" style="background:#AAA; font-size:11px; margin-top:10px;" onclick="addExLogic('tpl-ex-${tpl.id}', ${tpl.id})">+ 動作</button>
                 <button onclick="deleteTpl(${tpl.id})" style="color:red; font-size:10px; border:none; background:none; margin-top:10px; width:100%; text-align:right;">🗑️ 刪除模板</button>`;
             container.appendChild(div); renderList(`tpl-ex-${tpl.id}`, tpl.exercises, tpl.id);
