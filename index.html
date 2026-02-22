@@ -25,32 +25,33 @@
         .timer-btns { display: flex; justify-content: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
         .timer-btn { background: #555; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; }
         .timer-btn.active { background: var(--primary); }
-        .timer-ctrl { background: var(--save); margin-top: 5px; }
         .timer-progress { width: 100%; height: 4px; background: #444; margin-top: 10px; border-radius: 2px; overflow: hidden; }
         .timer-bar { width: 0%; height: 100%; background: var(--primary); transition: width 1s linear; }
-        .timer-alarm { color: #ff6b6b; animation: blink 1s infinite; }
-        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; margin-top: 10px; }
-        .calendar-day { padding: 8px 0; border-radius: 6px; font-size: 12px; cursor: pointer; position: relative; }
-        .calendar-day.active { background: var(--primary); color: white; }
-        .calendar-day.has-data::after { content: '•'; position: absolute; bottom: 2px; left: 45%; color: var(--save); }
-        
+        /* 訓練模組 */
         .ex-module { border: 1px solid #EEE; margin-bottom: 6px; background: white; border-radius: 10px; overflow: hidden; }
         .module-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #F8F8F8; border-bottom: 1px solid #EEE; }
         .table-header { display: grid; grid-template-columns: 35px 45px 45px 35px 1fr 30px 30px; gap: 4px; padding: 5px; background: var(--primary); color: white; font-size: 10px; text-align: center; }
         .ex-row { display: grid; grid-template-columns: 35px 45px 45px 35px 1fr 30px 30px; gap: 4px; padding: 6px 5px; align-items: center; border-bottom: 1px solid #F0F0F0; }
         .ss-active { border-left: 8px solid var(--ss-border); background: var(--ss-bg); }
         
-        .tpl-header { display: flex; justify-content: space-between; align-items: center; padding: 12px; cursor: pointer; background: white; border-radius: 12px; }
+        /* 模板收合 */
+        .tpl-header { display: flex; justify-content: space-between; align-items: center; padding: 12px; cursor: pointer; background: white; border-radius: 12px; font-weight: bold; }
         .tpl-content { display: none; padding: 0 12px 12px 12px; border-top: 1px dashed #EEE; }
         .tpl-content.open { display: block; }
-        
+        .tpl-arrow { font-size: 10px; color: var(--primary); transition: transform 0.2s; }
+        .is-open .tpl-arrow { transform: rotate(180deg); }
+
         input { border: 1px solid #DDD; border-radius: 4px; padding: 5px 2px; text-align: center; font-size: 12px; width: 100%; }
         .btn-check { height: 26px; width: 26px; border-radius: 4px; border: 1px solid #DDD; background: #EEE; cursor: pointer; }
         .btn-check.done { background: var(--save); color: white; border: none; }
         .btn-action { background: var(--primary); color: white; border: none; padding: 10px; border-radius: 8px; font-weight: bold; width: 100%; margin-top: 5px; cursor: pointer; }
         .loading { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); display:none; justify-content:center; align-items:center; z-index:2000; font-weight:bold; }
+        
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; margin-top: 10px; }
+        .calendar-day { padding: 8px 0; border-radius: 6px; font-size: 12px; cursor: pointer; position: relative; }
+        .calendar-day.active { background: var(--primary); color: white; }
+        .calendar-day.has-data::after { content: '•'; position: absolute; bottom: 2px; left: 45%; color: var(--save); }
     </style>
 </head>
 <body>
@@ -59,8 +60,8 @@
 
 <div class="container">
     <div id="page-train" class="tab-content active">
-        <div class="timer-container" id="timer-box">
-            <div style="font-size: 11px; opacity: 0.7;">REST TIMER</div>
+        <div class="timer-container">
+            <div style="font-size: 10px; opacity: 0.7;">REST TIMER</div>
             <div class="timer-display" id="timer-display">00:00</div>
             <div class="timer-progress"><div class="timer-bar" id="timer-bar"></div></div>
             <div class="timer-btns">
@@ -70,8 +71,8 @@
                 <button class="timer-btn" onclick="startTimer(90)">90s</button>
             </div>
             <div class="timer-btns">
-                <button class="timer-btn timer-ctrl" id="timer-pause-btn" onclick="togglePause()">暫停</button>
-                <button class="timer-btn timer-ctrl" style="background:#888;" onclick="resetTimer()">重設</button>
+                <button class="timer-btn" style="background:var(--save)" id="timer-pause-btn" onclick="togglePause()">暫停</button>
+                <button class="timer-btn" style="background:#777" onclick="resetTimer()">重設</button>
             </div>
         </div>
 
@@ -87,7 +88,7 @@
             <b id="selected-date-label" style="font-size:11px; color:var(--primary)"></b>
             <span style="font-size:11px;">⚖️ <input type="number" id="weight" step="0.1" style="width:40px" oninput="saveToLocal()"></span>
             <span style="font-size:11px;">💧 <input type="number" id="fat" step="0.1" style="width:40px" oninput="saveToLocal()"></span>
-            <button onclick="saveWorkout()" style="margin-left:auto; background:var(--save); color:white; border:none; padding:8px 12px; border-radius:6px; font-size:12px;">💾 儲存</button>
+            <button onclick="saveWorkout()" style="margin-left:auto; background:var(--save); color:white; border:none; padding:8px 12px; border-radius:6px; font-size:12px; font-weight:bold;">💾 儲存</button>
         </div>
         <div id="train-list"></div>
         <button class="btn-action" style="background:#888" onclick="addExLogic('train-list', null)">+ 手動新增動作</button>
@@ -98,7 +99,7 @@
             <h3>📋 課表模板庫</h3>
             <button onclick="saveTemplates()" style="background:var(--save); color:white; border:none; padding:8px 12px; border-radius:6px; font-size:12px;">💾 儲存模板</button>
         </div>
-        <button class="btn-action" style="margin-bottom: 15px;" onclick="createNewTemplate()">+ 建立全新模板組</button>
+        <button class="btn-action" style="margin-bottom:15px" onclick="createNewTemplate()">+ 建立全新模板組</button>
         <div id="library-container"></div>
     </div>
 
@@ -122,98 +123,37 @@
     let selectedDate = new Date().toISOString().split('T')[0];
     let allData = {}; let templates = []; let currentMonth = new Date();
     let myChart = null;
+    let openTplId = null; // 記憶當前展開的模板 ID
 
-    // --- 【計時器邏輯】 ---
-    let timerInterval = null;
-    let timeLeft = 0;
-    let totalTime = 0;
-    let isPaused = false;
-
-    function startTimer(seconds) {
-        clearInterval(timerInterval);
-        isPaused = false;
-        timeLeft = seconds;
-        totalTime = seconds;
-        updateTimerDisplay();
-        document.getElementById('timer-pause-btn').innerText = "暫停";
-        document.getElementById('timer-display').classList.remove('timer-alarm');
-        
+    // --- 計時器邏輯 ---
+    let timerInterval = null, timeLeft = 0, totalTime = 0, isPaused = false;
+    function startTimer(s) {
+        clearInterval(timerInterval); timeLeft = totalTime = s; isPaused = false;
+        updateTimerDisplay(); document.getElementById('timer-pause-btn').innerText = "暫停";
         timerInterval = setInterval(() => {
-            if (!isPaused) {
-                timeLeft--;
-                updateTimerDisplay();
-                if (timeLeft <= 0) {
-                    clearInterval(timerInterval);
-                    document.getElementById('timer-display').classList.add('timer-alarm');
-                    // 震動提醒 (如果手機支援)
-                    if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-                }
-            }
+            if (!isPaused) { timeLeft--; updateTimerDisplay(); if (timeLeft <= 0) clearInterval(timerInterval); }
         }, 1000);
     }
-
     function updateTimerDisplay() {
-        const mins = Math.floor(timeLeft / 60);
-        const secs = timeLeft % 60;
-        document.getElementById('timer-display').innerText = 
-            `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-        
-        const percent = totalTime > 0 ? ((totalTime - timeLeft) / totalTime) * 100 : 0;
-        document.getElementById('timer-bar').style.width = percent + "%";
+        const m = Math.floor(timeLeft / 60), s = timeLeft % 60;
+        document.getElementById('timer-display').innerText = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+        document.getElementById('timer-bar').style.width = totalTime > 0 ? ((totalTime - timeLeft) / totalTime) * 100 + "%" : "0%";
     }
+    function togglePause() { if (timeLeft <= 0) return; isPaused = !isPaused; document.getElementById('timer-pause-btn').innerText = isPaused ? "繼續" : "暫停"; }
+    function resetTimer() { clearInterval(timerInterval); timeLeft = totalTime = 0; updateTimerDisplay(); }
 
-    function togglePause() {
-        if (timeLeft <= 0) return;
-        isPaused = !isPaused;
-        document.getElementById('timer-pause-btn').innerText = isPaused ? "繼續" : "暫停";
-    }
-
-    function resetTimer() {
-        clearInterval(timerInterval);
-        timeLeft = 0;
-        totalTime = 0;
-        isPaused = false;
-        updateTimerDisplay();
-        document.getElementById('timer-pause-btn').innerText = "暫停";
-        document.getElementById('timer-display').classList.remove('timer-alarm');
-    }
-
-    // --- 自動暫存功能 ---
+    // --- 暫存與同步 ---
     function saveToLocal() {
-        const draft = {
-            date: selectedDate,
-            workout: allData[selectedDate]?.workout || [],
-            weight: document.getElementById('weight').value,
-            fat: document.getElementById('fat').value
-        };
+        const draft = { date: selectedDate, workout: allData[selectedDate]?.workout || [], weight: document.getElementById('weight').value, fat: document.getElementById('fat').value };
         localStorage.setItem('workout_draft', JSON.stringify(draft));
     }
-
     function checkDraft() {
-        const draftStr = localStorage.getItem('workout_draft');
-        if (draftStr) {
-            const draft = JSON.parse(draftStr);
-            if (draft.workout && draft.workout.length > 0) {
-                if (confirm(`發現上次未儲存的紀錄 (${draft.date})，是否還原？`)) {
-                    selectedDate = draft.date;
-                    if(!allData[selectedDate]) allData[selectedDate] = {};
-                    allData[selectedDate].workout = draft.workout;
-                    allData[selectedDate].weight = draft.weight;
-                    allData[selectedDate].fat = draft.fat;
-                    renderCalendar(); loadDateData();
-                } else {
-                    localStorage.removeItem('workout_draft');
-                }
-            }
+        const d = JSON.parse(localStorage.getItem('workout_draft'));
+        if (d && d.workout?.length > 0 && confirm(`發現上次未儲存紀錄 (${d.date})，是否還原？`)) {
+            selectedDate = d.date; if(!allData[selectedDate]) allData[selectedDate] = {};
+            allData[selectedDate].workout = d.workout; allData[selectedDate].weight = d.weight; allData[selectedDate].fat = d.fat;
+            renderCalendar(); loadDateData();
         }
-    }
-
-    function switchTab(tabId, el) {
-        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-        document.getElementById('page-' + tabId).classList.add('active');
-        el.classList.add('active');
-        if(tabId === 'charts') updateExSelector();
     }
 
     async function syncAll() {
@@ -222,106 +162,93 @@
             const res = await fetch(SCRIPT_URL + '?t=' + Date.now());
             const data = await res.json();
             allData = {};
-            if(data.history && data.history.length > 1) {
+            if(data.history?.length > 1) {
                 data.history.slice(1).forEach(row => {
-                    let dStr = row[0].toString().replace(/'/g, "");
-                    if (dStr.includes('T')) dStr = dStr.split('T')[0];
-                    allData[dStr] = { workout: JSON.parse(row[1] || "[]"), weight: row[2] || "", fat: row[3] || "" };
+                    let d = row[0].toString().replace(/'/g, ""); if (d.includes('T')) d = d.split('T')[0];
+                    allData[d] = { workout: JSON.parse(row[1] || "[]"), weight: row[2] || "", fat: row[3] || "" };
                 });
             }
             templates = [];
-            if(data.templates && data.templates.length > 1) {
-                data.templates.slice(1).forEach(row => {
-                    templates.push({ id: row[0], name: row[1], exercises: JSON.parse(row[2]) });
-                });
+            if(data.templates?.length > 1) {
+                data.templates.slice(1).forEach(row => templates.push({ id: row[0], name: row[1], exercises: JSON.parse(row[2]) }));
             }
             renderCalendar(); renderLibrary(); loadDateData();
-        } catch(e) { console.error("同步失敗:", e); }
+        } catch(e) {}
         showLoader(false);
     }
 
     function renderList(targetId, exArr, tplId = null) {
         const list = document.getElementById(targetId); list.innerHTML = '';
-        let charIndex = 0; let displayLabels = [];
+        let charIndex = 0, displayLabels = [];
         for (let i = 0; i < exArr.length; i++) {
             if (i > 0 && exArr[i].isSS) {
-                let prevLabel = displayLabels[i-1];
-                if (prevLabel.length > 1) { displayLabels[i] = prevLabel.substring(0,1) + (parseInt(prevLabel.substring(1))+1); }
-                else { displayLabels[i-1] = prevLabel + "1"; displayLabels[i] = prevLabel + "2"; }
-            } else {
-                if (i > 0) charIndex++;
-                displayLabels[i] = String.fromCharCode(65 + charIndex);
-            }
+                let p = displayLabels[i-1];
+                if (p.length > 1) displayLabels[i] = p[0] + (parseInt(p.substring(1))+1);
+                else { displayLabels[i-1] = p + "1"; displayLabels[i] = p + "2"; }
+            } else { if (i > 0) charIndex++; displayLabels[i] = String.fromCharCode(65 + charIndex); }
         }
         exArr.forEach((ex, exIdx) => {
             const label = displayLabels[exIdx];
             const mod = document.createElement('div');
             mod.className = `ex-module ${label.length > 1 ? 'ss-active' : ''}`;
-            mod.innerHTML = `
-                <div class="module-header">
-                    <input style="font-weight:bold; border:none; background:transparent; font-size:13px;" value="${ex.name}" onchange="uEx('${targetId}',${tplId},${exIdx},'name',this.value)">
-                    <div style="font-size:10px;">
-                        <span onclick="tSS('${targetId}',${tplId},${exIdx})" style="cursor:pointer; color:${ex.isSS?'var(--save)':'#888'}">${ex.isSS?'🔗 已連動':'🔗 連動上動'}</span> | 
-                        <span onclick="aS('${targetId}',${tplId},${exIdx})" style="cursor:pointer">➕</span> | 
-                        <span onclick="dE('${targetId}',${tplId},${exIdx})" style="color:red; cursor:pointer">🗑️</span>
-                    </div>
-                </div>
-                <div class="table-header"><div>${label}</div><div>kg</div><div>次</div><div>RPE</div><div>備註</div><div>✓</div><div></div></div>
-                ${ex.sets.map((s, sIdx) => `
-                    <div class="ex-row">
-                        <div style="font-size:10px; font-weight:bold">${sIdx+1}</div>
-                        <div><input type="text" value="${s.w}" oninput="uS('${targetId}',${tplId},${exIdx},${sIdx},'w',this.value)"></div>
-                        <div><input type="text" value="${s.r}" oninput="uS('${targetId}',${tplId},${exIdx},${sIdx},'r',this.value)"></div>
-                        <div><input type="text" value="${s.p}" oninput="uS('${targetId}',${tplId},${exIdx},${sIdx},'p',this.value)"></div>
-                        <div><input type="text" style="text-align:left; padding-left:4px;" value="${s.n||''}" oninput="uS('${targetId}',${tplId},${exIdx},${sIdx},'n',this.value)"></div>
-                        <div><button class="btn-check ${s.d?'done':''}" onclick="tC(${exIdx},${sIdx})">✓</button></div>
-                        <div style="text-align:center"><span onclick="rSL('${targetId}',${tplId},${exIdx},${sIdx})" style="color:#CCC; cursor:pointer; font-size:16px;">×</span></div>
-                    </div>
-                `).join('')}
-            `;
+            mod.innerHTML = `<div class="module-header"><input style="font-weight:bold; border:none; background:transparent; font-size:13px;" value="${ex.name}" onchange="uEx('${targetId}',${tplId},${exIdx},'name',this.value)"><div style="font-size:10px;"><span onclick="tSS('${targetId}',${tplId},${exIdx})" style="cursor:pointer; color:${ex.isSS?'var(--save)':'#888'}">${ex.isSS?'🔗 已連動':'🔗 連動上動'}</span> | <span onclick="aS('${targetId}',${tplId},${exIdx})" style="cursor:pointer">➕</span> | <span onclick="dE('${targetId}',${tplId},${exIdx})" style="color:red; cursor:pointer">🗑️</span></div></div><div class="table-header"><div>${label}</div><div>kg</div><div>次</div><div>RPE</div><div>備註</div><div>✓</div><div></div></div>${ex.sets.map((s, sIdx) => `<div class="ex-row"><div>${sIdx+1}</div><div><input type="text" value="${s.w}" oninput="uS('${targetId}',${tplId},${exIdx},${sIdx},'w',this.value)"></div><div><input type="text" value="${s.r}" oninput="uS('${targetId}',${tplId},${exIdx},${sIdx},'r',this.value)"></div><div><input type="text" value="${s.p}" oninput="uS('${targetId}',${tplId},${exIdx},${sIdx},'p',this.value)"></div><div><input type="text" style="text-align:left; padding-left:4px;" value="${s.n||''}" oninput="uS('${targetId}',${tplId},${exIdx},${sIdx},'n',this.value)"></div><div><button class="btn-check ${s.d?'done':''}" onclick="tC(${exIdx},${sIdx})">✓</button></div><div style="text-align:center"><span onclick="rSL('${targetId}',${tplId},${exIdx},${sIdx})" style="color:#CCC; cursor:pointer; font-size:16px;">×</span></div></div>`).join('')}`;
             list.appendChild(mod);
         });
     }
 
-    async function saveWorkout() {
-        showLoader(true);
-        const w = document.getElementById('weight').value;
-        const f = document.getElementById('fat').value;
-        const payload = { type: "workout", date: selectedDate, workout: allData[selectedDate]?.workout || [], weight: w, fat: f };
-        try {
-            await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
-            localStorage.removeItem('workout_draft');
-            await syncAll();
-            alert("✅ 儲存成功！");
-        } catch(e) { alert("❌ 儲存失敗"); }
-        showLoader(false);
-    }
-
-    async function saveTemplates() {
-        showLoader(true);
-        await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ type: "template", content: templates }) });
-        alert("模板同步成功");
-        showLoader(false);
-    }
-
+    // --- 編輯邏輯：保持展開狀態 ---
     function uEx(tid,tl,ei,f,v) { let a=tl?templates.find(t=>t.id===tl).exercises:allData[selectedDate].workout; a[ei][f]=v; if(!tl) saveToLocal(); }
     function uS(tid,tl,ei,si,f,v) { let a=tl?templates.find(t=>t.id===tl).exercises:allData[selectedDate].workout; a[ei].sets[si][f]=v; if(!tl) saveToLocal(); }
-    function aS(tid,tl,ei) { let a=tl?templates.find(t=>t.id===tl).exercises:allData[selectedDate].workout; a[ei].sets.push({w:'',r:'',p:'',n:'',d:false}); tl?renderLibrary():(loadDateData(), saveToLocal()); }
-    function tSS(tid,tl,ei) { if(ei===0)return; let a=tl?templates.find(t=>t.id===tl).exercises:allData[selectedDate].workout; a[ei].isSS=!a[ei].isSS; tl?renderLibrary():(loadDateData(), saveToLocal()); }
-    function dE(tid,tl,ei) { let a=tl?templates.find(t=>t.id===tl).exercises:allData[selectedDate].workout; if(confirm(`確定刪除動作「${a[ei].name}」嗎？`)) { a.splice(ei,1); tl?renderLibrary():(loadDateData(), saveToLocal()); } }
-    function rSL(tid,tl,ei,si) { if(confirm("確定刪除這一組嗎？")) { let a=tl?templates.find(t=>t.id===tl).exercises:allData[selectedDate].workout; if(a[ei].sets.length>1){ a[ei].sets.splice(si,1); tl?renderLibrary():(loadDateData(), saveToLocal()); } } }
-    function deleteTpl(id) { const t = templates.find(x=>x.id===id); if(confirm(`確定永久刪除模板「${t.name}」嗎？`)) { templates = templates.filter(x=>x.id!==id); renderLibrary(); } }
-    function addExLogic(tid,tl) { if(!allData[selectedDate])allData[selectedDate]={workout:[],weight:'',fat:''}; let a=tl?templates.find(t=>t.id===tl).exercises:allData[selectedDate].workout; a.push({name:'新動作',isSS:false,sets:[{w:'',r:'',p:'',n:'',d:false}]}); tl?renderLibrary():(loadDateData(), saveToLocal()); }
+    function aS(tid,tl,ei) { if(tl) openTplId = tl; let a=tl?templates.find(t=>t.id===tl).exercises:allData[selectedDate].workout; a[ei].sets.push({w:'',r:'',p:'',n:'',d:false}); tl?renderLibrary():(loadDateData(), saveToLocal()); }
+    function tSS(tid,tl,ei) { if(ei===0)return; if(tl) openTplId = tl; let a=tl?templates.find(t=>t.id===tl).exercises:allData[selectedDate].workout; a[ei].isSS=!a[ei].isSS; tl?renderLibrary():(loadDateData(), saveToLocal()); }
+    function dE(tid,tl,ei) { if(tl) openTplId = tl; let a=tl?templates.find(t=>t.id===tl).exercises:allData[selectedDate].workout; if(confirm(`刪除動作「${a[ei].name}」？`)) { a.splice(ei,1); tl?renderLibrary():(loadDateData(), saveToLocal()); } }
+    function rSL(tid,tl,ei,si) { if(tl) openTplId = tl; if(confirm("刪除此組？")) { let a=tl?templates.find(t=>t.id===tl).exercises:allData[selectedDate].workout; if(a[ei].sets.length>1){ a[ei].sets.splice(si,1); tl?renderLibrary():(loadDateData(), saveToLocal()); } } }
+    function addExLogic(tid,tl) { if(tl) openTplId = tl; if(!allData[selectedDate])allData[selectedDate]={workout:[],weight:'',fat:''}; let a=tl?templates.find(t=>t.id===tl).exercises:allData[selectedDate].workout; a.push({name:'新動作',isSS:false,sets:[{w:'',r:'',p:'',n:'',d:false}]}); tl?renderLibrary():(loadDateData(), saveToLocal()); }
+
+    // --- 模板收合邏輯 ---
+    function toggleTpl(id) { 
+        if (openTplId === id) openTplId = null; 
+        else openTplId = id; 
+        renderLibrary(); 
+    }
+
+    function renderLibrary() {
+        const c = document.getElementById('library-container'); c.innerHTML = '';
+        templates.forEach(tpl => {
+            const isOpen = openTplId === tpl.id;
+            const wrap = document.createElement('div'); wrap.className = `card ${isOpen ? 'is-open' : ''}`;
+            wrap.innerHTML = `
+                <div class="tpl-header" onclick="toggleTpl(${tpl.id})">
+                    <span>🏋️‍♂️ ${tpl.name}</span>
+                    <span class="tpl-arrow">▼</span>
+                </div>
+                <div class="tpl-content ${isOpen ? 'open' : ''}">
+                    <div style="text-align: right; margin-bottom: 10px;">
+                        <button onclick="applyTpl(${tpl.id})" style="background:var(--primary); color:white; border:none; padding:6px 15px; border-radius:6px; font-size:12px; font-weight:bold;">套用此課表</button>
+                    </div>
+                    <div id="tpl-ex-${tpl.id}"></div>
+                    <div style="display:flex; justify-content:space-between; margin-top:10px;">
+                        <button class="btn-action" style="background:#AAA; width:auto; flex:1; margin-right:10px; font-size:11px;" onclick="addExLogic('tpl-ex-${tpl.id}',${tpl.id})">+ 動作</button>
+                        <button onclick="if(confirm('刪除整個模板？')) {templates=templates.filter(x=>x.id!=${tpl.id}); renderLibrary();}" style="color:var(--danger); font-size:11px; border:none; background:none;">🗑️ 刪除模板</button>
+                    </div>
+                </div>`;
+            c.appendChild(wrap);
+            if(isOpen) renderList(`tpl-ex-${tpl.id}`, tpl.exercises, tpl.id);
+        });
+    }
+
+    // --- 其餘功能 ---
+    async function saveWorkout() { showLoader(true); const p = { type: "workout", date: selectedDate, workout: allData[selectedDate]?.workout || [], weight: document.getElementById('weight').value, fat: document.getElementById('fat').value }; await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(p) }); localStorage.removeItem('workout_draft'); await syncAll(); alert("儲存成功"); showLoader(false); }
+    async function saveTemplates() { showLoader(true); await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ type: "template", content: templates }) }); alert("模板已同步"); showLoader(false); }
     function tC(ei,si) { allData[selectedDate].workout[ei].sets[si].d = !allData[selectedDate].workout[ei].sets[si].d; loadDateData(); saveToLocal(); }
     function applyTpl(id) { if(!allData[selectedDate])allData[selectedDate]={workout:[],weight:'',fat:''}; allData[selectedDate].workout=JSON.parse(JSON.stringify(templates.find(t=>t.id===id).exercises)); switchTab('train',document.querySelectorAll('.nav-item')[0]); loadDateData(); renderCalendar(); saveToLocal(); }
     function moveMonth(s) { currentMonth.setMonth(currentMonth.getMonth()+s); renderCalendar(); }
     function loadDateData() { const d=allData[selectedDate]||{workout:[],weight:'',fat:''}; document.getElementById('weight').value=d.weight||''; document.getElementById('fat').value=d.fat||''; document.getElementById('selected-date-label').innerText=selectedDate; renderList('train-list', d.workout); }
     function renderCalendar() { const grid=document.getElementById('calendar-days'); document.getElementById('month-label').innerText=`${currentMonth.getFullYear()}年 ${currentMonth.getMonth()+1}月`; grid.innerHTML=''; const first=new Date(currentMonth.getFullYear(),currentMonth.getMonth(),1).getDay(); const days=new Date(currentMonth.getFullYear(),currentMonth.getMonth()+1,0).getDate(); for(let i=0;i<first;i++)grid.appendChild(document.createElement('div')); for(let d=1;d<=days;d++){ const ds=`${currentMonth.getFullYear()}-${String(currentMonth.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`; const el=document.createElement('div'); el.className='calendar-day'+(ds===selectedDate?' active':'')+(allData[ds]?' has-data':''); el.innerText=d; el.onclick=()=>{selectedDate=ds;renderCalendar();loadDateData();}; grid.appendChild(el); } }
-    function toggleTpl(id) { const content = document.getElementById(`tpl-content-${id}`); content.classList.toggle('open'); }
-    function renderLibrary() { const c = document.getElementById('library-container'); c.innerHTML = ''; templates.forEach(tpl => { const wrap = document.createElement('div'); wrap.className = 'card'; wrap.innerHTML = `<div class="tpl-header" onclick="toggleTpl(${tpl.id})"><b>🏋️‍♂️ ${tpl.name}</b><span style="font-size:10px">▼</span></div><div id="tpl-content-${tpl.id}" class="tpl-content"><div style="text-align: right; margin-bottom: 10px;"><button onclick="applyTpl(${tpl.id})" style="background:var(--primary); color:white; border:none; padding:6px 15px; border-radius:6px; font-size:12px; font-weight:bold;">套用此課表</button></div><div id="tpl-ex-${tpl.id}"></div><div style="display:flex; justify-content:space-between; margin-top:10px;"><button class="btn-action" style="background:#AAA; width:auto; flex:1; margin-right:10px; font-size:11px;" onclick="addExLogic('tpl-ex-${tpl.id}',${tpl.id})">+ 動作</button><button onclick="deleteTpl(${tpl.id})" style="color:var(--danger); font-size:11px; border:none; background:none;">🗑️ 刪除模板</button></div></div>`; c.appendChild(wrap); renderList(`tpl-ex-${tpl.id}`, tpl.exercises, tpl.id); }); }
     function createNewTemplate() { const n=prompt("建立名稱"); if(n){templates.push({id:Date.now(),name:n,exercises:[]});renderLibrary();} }
     function updateExSelector() { const sel=document.getElementById('exercise-selector'); const names=new Set(); Object.values(allData).forEach(d=>d.workout.forEach(e=>names.add(e.name))); sel.innerHTML='<option value="">-- 訓練強度 --</option>'; Array.from(names).sort().forEach(n=>sel.innerHTML+=`<option value="${n}">${n}</option>`); }
     function renderExerciseChart() { const name=document.getElementById('exercise-selector').value; if(!name)return; const pts=[]; Object.keys(allData).sort().forEach(date=>{ const ex=allData[date].workout.find(e=>e.name===name); if(ex){ const maxW=Math.max(...ex.sets.map(s=>parseFloat(s.w)||0)); if(maxW>0)pts.push({x:date,y:maxW}); } }); const ctx=document.getElementById('progressChart').getContext('2d'); if(myChart)myChart.destroy(); myChart=new Chart(ctx,{type:'line',data:{datasets:[{label:name+'(kg)',data:pts,borderColor:'#8C7851',tension:0.3, fill:true, backgroundColor:'rgba(140, 120, 81, 0.1)'}]},options:{responsive:true,maintainAspectRatio:false}}); }
+    function switchTab(t, e) { document.querySelectorAll('.tab-content').forEach(x=>x.classList.remove('active')); document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active')); document.getElementById('page-'+t).classList.add('active'); e.classList.add('active'); if(t==='charts') updateExSelector(); }
     function showLoader(s) { document.getElementById('loader').style.display=s?'flex':'none'; }
     window.onload = async function() { await syncAll(); checkDraft(); };
 </script>
