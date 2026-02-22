@@ -19,12 +19,11 @@
         .nav-item.active { color: var(--primary); font-weight: bold; }
         .card { background: white; border-radius: 12px; padding: 12px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         
-        /* 計時器樣式 */
+        /* 計時器 */
         .timer-container { text-align: center; padding: 15px 10px; background: #333; color: white; border-radius: 12px; margin-bottom: 12px; }
         .timer-display { font-size: 32px; font-weight: bold; font-family: monospace; margin: 5px 0; }
         .timer-btns { display: flex; justify-content: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
         .timer-btn { background: #555; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; }
-        .timer-btn.active { background: var(--primary); }
         .timer-progress { width: 100%; height: 4px; background: #444; margin-top: 10px; border-radius: 2px; overflow: hidden; }
         .timer-bar { width: 0%; height: 100%; background: var(--primary); transition: width 1s linear; }
 
@@ -35,12 +34,11 @@
         .ex-row { display: grid; grid-template-columns: 35px 45px 45px 35px 1fr 30px 30px; gap: 4px; padding: 6px 5px; align-items: center; border-bottom: 1px solid #F0F0F0; }
         .ss-active { border-left: 8px solid var(--ss-border); background: var(--ss-bg); }
         
-        /* 模板收合 */
+        /* 模板手動收合 */
         .tpl-header { display: flex; justify-content: space-between; align-items: center; padding: 12px; cursor: pointer; background: white; border-radius: 12px; font-weight: bold; }
         .tpl-content { display: none; padding: 0 12px 12px 12px; border-top: 1px dashed #EEE; }
         .tpl-content.open { display: block; }
-        .tpl-arrow { font-size: 10px; color: var(--primary); transition: transform 0.2s; }
-        .is-open .tpl-arrow { transform: rotate(180deg); }
+        .tpl-arrow { font-size: 10px; color: var(--primary); }
 
         input { border: 1px solid #DDD; border-radius: 4px; padding: 5px 2px; text-align: center; font-size: 12px; width: 100%; }
         .btn-check { height: 26px; width: 26px; border-radius: 4px; border: 1px solid #DDD; background: #EEE; cursor: pointer; }
@@ -123,7 +121,6 @@
     let selectedDate = new Date().toISOString().split('T')[0];
     let allData = {}; let templates = []; let currentMonth = new Date();
     let myChart = null;
-    let openTplId = null; // 記憶當前展開的模板 ID
 
     // --- 計時器邏輯 ---
     let timerInterval = null, timeLeft = 0, totalTime = 0, isPaused = false;
@@ -177,6 +174,7 @@
         showLoader(false);
     }
 
+    // --- 核心渲染引擎 (已補回連動設定) ---
     function renderList(targetId, exArr, tplId = null) {
         const list = document.getElementById(targetId); list.innerHTML = '';
         let charIndex = 0, displayLabels = [];
@@ -191,38 +189,60 @@
             const label = displayLabels[exIdx];
             const mod = document.createElement('div');
             mod.className = `ex-module ${label.length > 1 ? 'ss-active' : ''}`;
-            mod.innerHTML = `<div class="module-header"><input style="font-weight:bold; border:none; background:transparent; font-size:13px;" value="${ex.name}" onchange="uEx('${targetId}',${tplId},${exIdx},'name',this.value)"><div style="font-size:10px;"><span onclick="tSS('${targetId}',${tplId},${exIdx})" style="cursor:pointer; color:${ex.isSS?'var(--save)':'#888'}">${ex.isSS?'🔗 已連動':'🔗 連動上動'}</span> | <span onclick="aS('${targetId}',${tplId},${exIdx})" style="cursor:pointer">➕</span> | <span onclick="dE('${targetId}',${tplId},${exIdx})" style="color:red; cursor:pointer">🗑️</span></div></div><div class="table-header"><div>${label}</div><div>kg</div><div>次</div><div>RPE</div><div>備註</div><div>✓</div><div></div></div>${ex.sets.map((s, sIdx) => `<div class="ex-row"><div>${sIdx+1}</div><div><input type="text" value="${s.w}" oninput="uS('${targetId}',${tplId},${exIdx},${sIdx},'w',this.value)"></div><div><input type="text" value="${s.r}" oninput="uS('${targetId}',${tplId},${exIdx},${sIdx},'r',this.value)"></div><div><input type="text" value="${s.p}" oninput="uS('${targetId}',${tplId},${exIdx},${sIdx},'p',this.value)"></div><div><input type="text" style="text-align:left; padding-left:4px;" value="${s.n||''}" oninput="uS('${targetId}',${tplId},${exIdx},${sIdx},'n',this.value)"></div><div><button class="btn-check ${s.d?'done':''}" onclick="tC(${exIdx},${sIdx})">✓</button></div><div style="text-align:center"><span onclick="rSL('${targetId}',${tplId},${exIdx},${sIdx})" style="color:#CCC; cursor:pointer; font-size:16px;">×</span></div></div>`).join('')}`;
+            mod.innerHTML = `
+                <div class="module-header">
+                    <input style="font-weight:bold; border:none; background:transparent; font-size:13px;" value="${ex.name}" onchange="uEx('${targetId}',${tplId},${exIdx},'name',this.value)">
+                    <div style="font-size:10px;">
+                        <span onclick="tSS('${targetId}',${tplId},${exIdx})" style="cursor:pointer; color:${ex.isSS?'var(--save)':'#888'}">${ex.isSS?'🔗 已連動':'🔗 連動超級組'}</span> | 
+                        <span onclick="aS('${targetId}',${tplId},${exIdx})" style="cursor:pointer">➕</span> | 
+                        <span onclick="dE('${targetId}',${tplId},${exIdx})" style="color:red; cursor:pointer">🗑️</span>
+                    </div>
+                </div>
+                <div class="table-header"><div>${label}</div><div>kg</div><div>次</div><div>RPE</div><div>備註</div><div>✓</div><div></div></div>
+                ${ex.sets.map((s, sIdx) => `
+                    <div class="ex-row">
+                        <div>${sIdx+1}</div>
+                        <div><input type="text" value="${s.w}" oninput="uS('${targetId}',${tplId},${exIdx},${sIdx},'w',this.value)"></div>
+                        <div><input type="text" value="${s.r}" oninput="uS('${targetId}',${tplId},${exIdx},${sIdx},'r',this.value)"></div>
+                        <div><input type="text" value="${s.p}" oninput="uS('${targetId}',${tplId},${exIdx},${sIdx},'p',this.value)"></div>
+                        <div><input type="text" style="text-align:left; padding-left:4px;" value="${s.n||''}" oninput="uS('${targetId}',${tplId},${exIdx},${sIdx},'n',this.value)"></div>
+                        <div><button class="btn-check ${s.d?'done':''}" onclick="tC(${exIdx},${sIdx})">✓</button></div>
+                        <div style="text-align:center"><span onclick="rSL('${targetId}',${tplId},${exIdx},${sIdx})" style="color:#CCC; cursor:pointer; font-size:16px;">×</span></div>
+                    </div>`).join('')}`;
             list.appendChild(mod);
         });
     }
 
-    // --- 編輯邏輯：保持展開狀態 ---
+    // --- 編輯與開關邏輯 ---
     function uEx(tid,tl,ei,f,v) { let a=tl?templates.find(t=>t.id===tl).exercises:allData[selectedDate].workout; a[ei][f]=v; if(!tl) saveToLocal(); }
     function uS(tid,tl,ei,si,f,v) { let a=tl?templates.find(t=>t.id===tl).exercises:allData[selectedDate].workout; a[ei].sets[si][f]=v; if(!tl) saveToLocal(); }
-    function aS(tid,tl,ei) { if(tl) openTplId = tl; let a=tl?templates.find(t=>t.id===tl).exercises:allData[selectedDate].workout; a[ei].sets.push({w:'',r:'',p:'',n:'',d:false}); tl?renderLibrary():(loadDateData(), saveToLocal()); }
-    function tSS(tid,tl,ei) { if(ei===0)return; if(tl) openTplId = tl; let a=tl?templates.find(t=>t.id===tl).exercises:allData[selectedDate].workout; a[ei].isSS=!a[ei].isSS; tl?renderLibrary():(loadDateData(), saveToLocal()); }
-    function dE(tid,tl,ei) { if(tl) openTplId = tl; let a=tl?templates.find(t=>t.id===tl).exercises:allData[selectedDate].workout; if(confirm(`刪除動作「${a[ei].name}」？`)) { a.splice(ei,1); tl?renderLibrary():(loadDateData(), saveToLocal()); } }
-    function rSL(tid,tl,ei,si) { if(tl) openTplId = tl; if(confirm("刪除此組？")) { let a=tl?templates.find(t=>t.id===tl).exercises:allData[selectedDate].workout; if(a[ei].sets.length>1){ a[ei].sets.splice(si,1); tl?renderLibrary():(loadDateData(), saveToLocal()); } } }
-    function addExLogic(tid,tl) { if(tl) openTplId = tl; if(!allData[selectedDate])allData[selectedDate]={workout:[],weight:'',fat:''}; let a=tl?templates.find(t=>t.id===tl).exercises:allData[selectedDate].workout; a.push({name:'新動作',isSS:false,sets:[{w:'',r:'',p:'',n:'',d:false}]}); tl?renderLibrary():(loadDateData(), saveToLocal()); }
+    function aS(tid,tl,ei) { let a=tl?templates.find(t=>t.id===tl).exercises:allData[selectedDate].workout; a[ei].sets.push({w:'',r:'',p:'',n:'',d:false}); tl?renderLibraryInner(tl):(loadDateData(), saveToLocal()); }
+    function tSS(tid,tl,ei) { if(ei===0)return; let a=tl?templates.find(t=>t.id===tl).exercises:allData[selectedDate].workout; a[ei].isSS=!a[ei].isSS; tl?renderLibraryInner(tl):(loadDateData(), saveToLocal()); }
+    function dE(tid,tl,ei) { let a=tl?templates.find(t=>t.id===tl).exercises:allData[selectedDate].workout; if(confirm(`刪除動作「${a[ei].name}」？`)) { a.splice(ei,1); tl?renderLibraryInner(tl):(loadDateData(), saveToLocal()); } }
+    function rSL(tid,tl,ei,si) { if(confirm("刪除此組？")) { let a=tl?templates.find(t=>t.id===tl).exercises:allData[selectedDate].workout; if(a[ei].sets.length>1){ a[ei].sets.splice(si,1); tl?renderLibraryInner(tl):(loadDateData(), saveToLocal()); } } }
+    function addExLogic(tid,tl) { if(!allData[selectedDate])allData[selectedDate]={workout:[],weight:'',fat:''}; let a=tl?templates.find(t=>t.id===tl).exercises:allData[selectedDate].workout; a.push({name:'新動作',isSS:false,sets:[{w:'',r:'',p:'',n:'',d:false}]}); tl?renderLibraryInner(tl):(loadDateData(), saveToLocal()); }
 
-    // --- 模板收合邏輯 ---
-    function toggleTpl(id) { 
-        if (openTplId === id) openTplId = null; 
-        else openTplId = id; 
-        renderLibrary(); 
+    function toggleTpl(id) {
+        const content = document.getElementById(`tpl-content-${id}`);
+        content.classList.toggle('open');
+    }
+
+    // 只更新局部內容，避免卡片收合
+    function renderLibraryInner(tplId) {
+        const tpl = templates.find(t => t.id === tplId);
+        renderList(`tpl-ex-${tplId}`, tpl.exercises, tplId);
     }
 
     function renderLibrary() {
         const c = document.getElementById('library-container'); c.innerHTML = '';
         templates.forEach(tpl => {
-            const isOpen = openTplId === tpl.id;
-            const wrap = document.createElement('div'); wrap.className = `card ${isOpen ? 'is-open' : ''}`;
+            const wrap = document.createElement('div'); wrap.className = 'card';
             wrap.innerHTML = `
                 <div class="tpl-header" onclick="toggleTpl(${tpl.id})">
                     <span>🏋️‍♂️ ${tpl.name}</span>
                     <span class="tpl-arrow">▼</span>
                 </div>
-                <div class="tpl-content ${isOpen ? 'open' : ''}">
+                <div id="tpl-content-${tpl.id}" class="tpl-content">
                     <div style="text-align: right; margin-bottom: 10px;">
                         <button onclick="applyTpl(${tpl.id})" style="background:var(--primary); color:white; border:none; padding:6px 15px; border-radius:6px; font-size:12px; font-weight:bold;">套用此課表</button>
                     </div>
@@ -233,7 +253,7 @@
                     </div>
                 </div>`;
             c.appendChild(wrap);
-            if(isOpen) renderList(`tpl-ex-${tpl.id}`, tpl.exercises, tpl.id);
+            renderList(`tpl-ex-${tpl.id}`, tpl.exercises, tpl.id);
         });
     }
 
