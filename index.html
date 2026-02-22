@@ -4,10 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>💪🏻 健身課表</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --bg: #F5F2ED; --card: #FFFFFF; --primary: #8C7851; --accent: #B0A990;
             --text: #333; --ss-bg: #F0EDE5; --save: #6B705C; --danger: #CC6666;
+            --ss-border: #8C7851;
         }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding-bottom: 70px; color: var(--text); }
         .container { width: 100%; max-width: 650px; margin: 0 auto; padding: 10px; box-sizing: border-box; }
@@ -24,25 +26,26 @@
         .calendar-day.active { background: var(--primary); color: white; }
         .calendar-day.has-data::after { content: '•'; display: block; color: var(--save); margin-top: -5px; }
 
-        /* 訓練模組 */
-        .ex-module { border: 1px solid #EEE; margin-bottom: 15px; background: white; border-radius: 10px; overflow: hidden; }
+        .ex-module { border: 1px solid #EEE; margin-bottom: 8px; background: white; border-radius: 10px; overflow: hidden; }
         .module-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #F8F8F8; border-bottom: 1px solid #EEE; }
-        .table-header { display: grid; grid-template-columns: 30px 45px 45px 35px 1fr 35px; gap: 4px; padding: 5px; background: var(--primary); color: white; font-size: 10px; text-align: center; }
-        .ex-row { display: grid; grid-template-columns: 30px 45px 45px 35px 1fr 35px; gap: 4px; padding: 5px; align-items: center; border-bottom: 1px solid #F0F0F0; }
-        .ss-active { background: var(--ss-bg); border-left: 4px solid var(--accent); }
+        .table-header { display: grid; grid-template-columns: 35px 45px 45px 35px 1fr 35px; gap: 4px; padding: 5px; background: var(--primary); color: white; font-size: 10px; text-align: center; }
+        .ex-row { display: grid; grid-template-columns: 35px 45px 45px 35px 1fr 35px; gap: 4px; padding: 5px; align-items: center; border-bottom: 1px solid #F0F0F0; }
+        .ss-active { background: var(--ss-bg); border-left: 6px solid var(--ss-border); border-radius: 4px; }
         
-        input { border: 1px solid #DDD; border-radius: 4px; padding: 5px 2px; text-align: center; font-size: 12px; width: 100%; box-sizing: border-box; }
-        input.note-input { text-align: left; padding-left: 5px; color: #666; font-size: 11px; }
-        .btn-check { height: 28px; width: 28px; border-radius: 4px; border: 1px solid #DDD; background: #EEE; cursor: pointer; }
+        input, select { border: 1px solid #DDD; border-radius: 4px; padding: 5px 2px; text-align: center; font-size: 12px; width: 100%; box-sizing: border-box; }
+        .btn-check { height: 28px; width: 28px; border-radius: 4px; border: 1px solid #DDD; background: #EEE; }
         .btn-check.done { background: var(--save); color: white; border: none; }
 
-        .btn-action { background: var(--primary); color: white; border: none; padding: 8px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 5px; }
+        .btn-action { background: var(--primary); color: white; border: none; padding: 8px 15px; border-radius: 8px; font-weight: bold; width: 100%; margin-top: 5px; }
         .loading { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); display:none; justify-content:center; align-items:center; z-index:2000; font-weight:bold; }
+        
+        /* 圖表專用 */
+        .chart-container { height: 300px; margin-top: 15px; }
     </style>
 </head>
 <body>
 
-<div id="loader" class="loading">⚙️ 同步雲端中...</div>
+<div id="loader" class="loading">⚙️ 同步雲端資料中...</div>
 
 <div class="container">
     <div id="page-train" class="tab-content active">
@@ -56,8 +59,8 @@
         </div>
         <div class="card" style="display:flex; gap:8px; align-items:center;">
             <span style="font-size:12px; font-weight:bold; color:var(--primary);" id="selected-date-label"></span>
-            <span style="font-size:11px;">體重 <input type="number" id="weight" step="0.1" style="width:45px"></span>
-            <span style="font-size:11px;">體脂 <input type="number" id="fat" step="0.1" style="width:45px"></span>
+            <span style="font-size:11px;">⚖️ <input type="number" id="weight" step="0.1" style="width:45px"></span>
+            <span style="font-size:11px;">💧 <input type="number" id="fat" step="0.1" style="width:45px"></span>
             <button onclick="saveWorkout()" style="margin-left:auto; background:var(--save); color:white; border:none; padding:8px 12px; border-radius:6px; font-size:12px;">💾 儲存</button>
         </div>
         <div id="train-list"></div>
@@ -66,31 +69,129 @@
 
     <div id="page-library" class="tab-content">
         <div style="display:flex; justify-content:space-between; align-items:center;">
-            <h3>📋 共享課表模板</h3>
+            <h3>📋 課表模板庫</h3>
             <button onclick="saveTemplates()" style="background:var(--save); color:white; border:none; padding:8px 12px; border-radius:6px; font-size:12px;">💾 儲存模板</button>
         </div>
         <button class="btn-action" onclick="createNewTemplate()">+ 建立全新模板組</button>
         <div id="library-container" style="margin-top:15px;"></div>
     </div>
+
+    <div id="page-charts" class="tab-content">
+        <div class="card">
+            <h3 style="margin-top:0">📈 動作強度追蹤</h3>
+            <label style="font-size:12px; color:#888">選擇動作：</label>
+            <select id="exercise-selector" onchange="renderExerciseChart()" style="margin-top:5px; border-color:var(--primary)"></select>
+            <div class="chart-container">
+                <canvas id="progressChart"></canvas>
+            </div>
+        </div>
+        <div class="card">
+            <h3>⚖️ 體態趨勢</h3>
+            <div class="chart-container">
+                <canvas id="bodyChart"></canvas>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="bottom-nav">
-    <div class="nav-item active" onclick="switchTab('train', this)">🏋️ 訓練</div>
-    <div class="nav-item" onclick="switchTab('library', this)">📋 模板</div>
+    <div class="nav-item active" onclick="switchTab('train', this)">🏋️ 訓練紀錄</div>
+    <div class="nav-item" onclick="switchTab('library', this)">📋 模板管理</div>
+    <div class="nav-item" onclick="switchTab('charts', this)">📊 進度分析</div>
 </div>
 
 <script>
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzdppLufdX1_LV4Tz1Jo8OOiBswmVY2vEiGS19-fYQGVhLtyuqbJ1cnCPJ0c_rkC7y6oQ/exec'; 
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzdppLufdX1_LV4Tz1Jo8OOiBswmVY2vEiGS19-fYQGVhLtyuqbJ1cnCPJ0c_rkC7y6oQ/exec'; // 填入你的網址
     let selectedDate = new Date().toISOString().split('T')[0];
     let allData = {}; let templates = []; let currentMonth = new Date();
+    let myProgressChart = null; let myBodyChart = null;
 
     function switchTab(tabId, el) {
         document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
         document.getElementById('page-' + tabId).classList.add('active');
         el.classList.add('active');
+        if(tabId === 'charts') {
+            updateExerciseSelector();
+            renderBodyChart();
+        }
     }
 
+    // --- 圖表邏輯 ---
+    function updateExerciseSelector() {
+        const selector = document.getElementById('exercise-selector');
+        const exercises = new Set();
+        // 抓取所有出現在紀錄中的動作名稱
+        Object.values(allData).forEach(day => {
+            day.workout.forEach(ex => exercises.add(ex.name));
+        });
+        
+        selector.innerHTML = '<option value="">-- 請選擇動作 --</option>';
+        Array.from(exercises).sort().forEach(exName => {
+            const opt = document.createElement('option');
+            opt.value = exName; opt.innerText = exName;
+            selector.appendChild(opt);
+        });
+    }
+
+    function renderExerciseChart() {
+        const exName = document.getElementById('exercise-selector').value;
+        if(!exName) return;
+
+        const history = [];
+        // 提取該動作的所有日期與最大重量
+        Object.keys(allData).sort().forEach(date => {
+            const day = allData[date];
+            const exData = day.workout.find(e => e.name === exName);
+            if(exData) {
+                const maxW = Math.max(...exData.sets.map(s => parseFloat(s.w) || 0));
+                if(maxW > 0) history.push({ date, maxW });
+            }
+        });
+
+        const ctx = document.getElementById('progressChart').getContext('2d');
+        if(myProgressChart) myProgressChart.destroy();
+        myProgressChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: history.map(h => h.date),
+                datasets: [{
+                    label: exName + ' 最高重量 (kg)',
+                    data: history.map(h => h.maxW),
+                    borderColor: '#8C7851',
+                    backgroundColor: 'rgba(140, 120, 81, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    }
+
+    function renderBodyChart() {
+        const dates = Object.keys(allData).sort();
+        const bodyHistory = dates.filter(d => allData[d].weight > 0).map(d => ({ date: d, weight: allData[d].weight }));
+        
+        const ctx = document.getElementById('bodyChart').getContext('2d');
+        if(myBodyChart) myBodyChart.destroy();
+        myBodyChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: bodyHistory.map(h => h.date),
+                datasets: [{
+                    label: '體重 (kg)',
+                    data: bodyHistory.map(h => h.weight),
+                    borderColor: '#6B705C',
+                    borderWidth: 2,
+                    tension: 0.1
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    }
+
+    // --- 同步與基礎功能 (其餘代碼同前版本) ---
     async function syncAll() {
         showLoader(true);
         try {
@@ -111,9 +212,12 @@
 
     async function saveWorkout() {
         showLoader(true);
-        const dayData = { type: "workout", date: selectedDate, workout: allData[selectedDate]?.workout || [], weight: document.getElementById('weight').value, fat: document.getElementById('fat').value };
+        if(!allData[selectedDate]) allData[selectedDate] = { workout: [], weight: '', fat: '' };
+        allData[selectedDate].weight = document.getElementById('weight').value;
+        allData[selectedDate].fat = document.getElementById('fat').value;
+        const dayData = { type: "workout", date: selectedDate, workout: allData[selectedDate].workout, weight: allData[selectedDate].weight, fat: allData[selectedDate].fat };
         await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(dayData) });
-        syncAll();
+        await syncAll();
     }
 
     async function saveTemplates() {
@@ -124,8 +228,7 @@
     }
 
     function createNewTemplate() {
-        const name = prompt("模板名稱（如：推系列）");
-        if(!name) return;
+        const name = prompt("模板名稱？"); if(!name) return;
         templates.push({ id: Date.now(), name: name, exercises: [{name:'新動作',isSS:false,sets:[{w:'',r:'',p:'',n:''}]}] });
         renderLibrary();
     }
@@ -137,11 +240,10 @@
             div.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                     <b style="color:var(--primary)">💎 ${tpl.name}</b> 
-                    <button onclick="applyTpl(${tpl.id})" style="background:var(--primary); color:white; border:none; font-size:10px; padding:5px 10px; border-radius:5px;">套用至選定日</button>
+                    <button onclick="applyTpl(${tpl.id})" style="background:var(--primary); color:white; border:none; font-size:10px; padding:5px 10px; border-radius:5px;">套用到今日</button>
                 </div>
                 <div id="tpl-ex-${tpl.id}"></div>
-                <button class="btn-action" style="background:#AAA; font-size:11px; padding:5px;" onclick="addExLogic('tpl-ex-${tpl.id}', ${tpl.id})">+ 新增動作內容</button>
-                <button onclick="deleteTpl(${tpl.id})" style="color:red; font-size:10px; border:none; background:none; margin-top:10px; width:100%; text-align:right;">🗑️ 刪除模板</button>
+                <button class="btn-action" style="background:#AAA; font-size:11px; padding:5px;" onclick="addExLogic('tpl-ex-${tpl.id}', ${tpl.id})">+ 增加動作</button>
             `;
             container.appendChild(div);
             renderList(`tpl-ex-${tpl.id}`, tpl.exercises, tpl.id);
@@ -150,29 +252,35 @@
 
     function renderList(targetId, exArr, tplId = null) {
         const list = document.getElementById(targetId); list.innerHTML = '';
-        let charCode = 65; let ssCounter = 0;
+        let currentGroupChar = 65; let ssCounter = 0; let isInsideSSGroup = false;
         exArr.forEach((ex, exIdx) => {
-            if (exIdx > 0 && !ex.isSS) { charCode++; ssCounter = 1; } else { ssCounter++; }
-            let itemIdx = String.fromCharCode(charCode) + ssCounter;
+            let label = "";
+            if (ex.isSS) {
+                if (!isInsideSSGroup) { isInsideSSGroup = true; ssCounter = 1; } else { ssCounter++; }
+                label = String.fromCharCode(currentGroupChar) + ssCounter;
+            } else {
+                if (isInsideSSGroup) { currentGroupChar++; isInsideSSGroup = false; }
+                label = String.fromCharCode(currentGroupChar); currentGroupChar++;
+            }
             const mod = document.createElement('div');
             mod.className = `ex-module ${ex.isSS ? 'ss-active' : ''}`;
             mod.innerHTML = `
                 <div class="module-header">
                     <input style="font-weight:bold; border:none; background:transparent; font-size:13px;" value="${ex.name}" onchange="uEx('${targetId}',${tplId},${exIdx},'name',this.value)">
                     <div style="font-size:10px;">
-                        <span onclick="tSS('${targetId}',${tplId},${exIdx})" style="cursor:pointer">${ex.isSS?'🔗 SS中':'🔗 超級組'}</span> | 
-                        <span onclick="aS('${targetId}',${tplId},${exIdx})" style="cursor:pointer">➕ 增組</span> | 
+                        <span onclick="tSS('${targetId}',${tplId},${exIdx})" style="cursor:pointer">${ex.isSS?'🔗 連動中':'🔗 超級組'}</span> | 
+                        <span onclick="aS('${targetId}',${tplId},${exIdx})" style="cursor:pointer">➕</span> | 
                         <span onclick="dE('${targetId}',${tplId},${exIdx})" style="color:red; cursor:pointer">🗑️</span>
                     </div>
                 </div>
-                <div class="table-header"><div>組</div><div>kg</div><div>次</div><div>RPE</div><div>備註</div><div>✓</div></div>
+                <div class="table-header"><div>${label}</div><div>kg</div><div>次</div><div>RPE</div><div>備註</div><div>✓</div></div>
                 ${ex.sets.map((s, sIdx) => `
                     <div class="ex-row">
-                        <div style="font-size:10px; font-weight:bold">${sIdx===0?itemIdx:(sIdx+1)}</div>
+                        <div style="font-size:10px; font-weight:bold">${sIdx+1}</div>
                         <div><input type="text" value="${s.w}" oninput="uS('${targetId}',${tplId},${exIdx},${sIdx},'w',this.value)"></div>
                         <div><input type="text" value="${s.r}" oninput="uS('${targetId}',${tplId},${exIdx},${sIdx},'r',this.value)"></div>
                         <div><input type="text" value="${s.p}" oninput="uS('${targetId}',${tplId},${exIdx},${sIdx},'p',this.value)"></div>
-                        <div><input type="text" class="note-input" placeholder="備註..." value="${s.n||''}" oninput="uS('${targetId}',${tplId},${exIdx},${sIdx},'n',this.value)"></div>
+                        <div><input type="text" value="${s.n||''}" oninput="uS('${targetId}',${tplId},${exIdx},${sIdx},'n',this.value)"></div>
                         <div><button class="btn-check ${s.d?'done':''}" onclick="tC(${exIdx},${sIdx})">✓</button></div>
                     </div>
                 `).join('')}
@@ -187,7 +295,8 @@
     function tSS(tid, tplId, ei) { let a = tplId ? templates.find(t=>t.id===tplId).exercises : allData[selectedDate].workout; a[ei].isSS = !a[ei].isSS; tplId?renderLibrary():loadDateData(); }
     function dE(tid, tplId, ei) { let a = tplId ? templates.find(t=>t.id===tplId).exercises : allData[selectedDate].workout; a.splice(ei,1); tplId?renderLibrary():loadDateData(); }
     function addExLogic(tid, tplId) {
-        let a = tplId ? templates.find(t=>t.id===tplId).exercises : (allData[selectedDate] ? allData[selectedDate].workout : (allData[selectedDate]={workout:[]}).workout);
+        if(!allData[selectedDate]) allData[selectedDate] = {workout:[], weight:'', fat:''};
+        let a = tplId ? templates.find(t=>t.id===tplId).exercises : allData[selectedDate].workout;
         a.push({name:'新動作',isSS:false,sets:[{w:'',r:'',p:'',n:'',d:false}]});
         tplId?renderLibrary():loadDateData();
     }
@@ -198,12 +307,10 @@
         switchTab('train', document.querySelectorAll('.nav-item')[0]);
         loadDateData(); renderCalendar();
     }
-    function deleteTpl(id) { if(confirm("確定刪除模板？")) { templates = templates.filter(t=>t.id!==id); renderLibrary(); } }
-
     function loadDateData() {
         const d = allData[selectedDate] || { workout: [], weight: '', fat: '' };
-        document.getElementById('weight').value = d.weight;
-        document.getElementById('fat').value = d.fat;
+        document.getElementById('weight').value = d.weight || '';
+        document.getElementById('fat').value = d.fat || '';
         document.getElementById('selected-date-label').innerText = selectedDate;
         renderList('train-list', d.workout);
     }
