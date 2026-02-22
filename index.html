@@ -8,43 +8,46 @@
     <style>
         :root {
             --bg: #F5F2ED; --card: #FFFFFF; --primary: #8C7851; --accent: #B0A990;
-            --text: #333; --ss-bg: #EAE7DC; --save: #6B705C; --danger: #CC6666;
+            --text: #333; --ss-bg: #F0EDE5; --save: #6B705C; --danger: #CC6666;
         }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 0; color: var(--text); padding-bottom: 70px; }
-        .container { width: 100%; max-width: 600px; margin: 0 auto; padding: 15px; box-sizing: border-box; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding-bottom: 70px; color: var(--text); }
+        .container { width: 100%; max-width: 650px; margin: 0 auto; padding: 10px; box-sizing: border-box; }
         
-        /* 分頁切換 */
+        /* 頁面切換 */
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         .bottom-nav { position: fixed; bottom: 0; width: 100%; background: white; display: flex; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); z-index: 1000; }
-        .nav-item { flex: 1; text-align: center; padding: 15px 0; font-size: 12px; color: #888; cursor: pointer; }
+        .nav-item { flex: 1; text-align: center; padding: 12px 0; font-size: 11px; color: #AAA; cursor: pointer; }
         .nav-item.active { color: var(--primary); font-weight: bold; }
 
-        /* 日曆與卡片 */
-        .card { background: white; border-radius: 15px; padding: 15px; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        /* 卡片與日曆 */
+        .card { background: white; border-radius: 12px; padding: 12px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; margin-top: 10px; }
-        .calendar-day { padding: 8px 0; border-radius: 8px; font-size: 12px; cursor: pointer; }
+        .calendar-day { padding: 8px 0; border-radius: 6px; font-size: 12px; cursor: pointer; }
         .calendar-day.active { background: var(--primary); color: white; }
         .calendar-day.has-data::after { content: '•'; display: block; color: var(--save); margin-top: -5px; }
 
-        /* 動作模組樣式 */
-        .ex-module { border: 1px solid #EEE; margin-bottom: 12px; background: white; border-radius: 10px; overflow: hidden; }
-        .module-tools { display: flex; gap: 10px; padding: 8px 12px; background: #FAFAFA; border-bottom: 1px solid #EEE; font-size: 11px; }
-        .ex-row { display: grid; grid-template-columns: 40px 1fr 60px 60px 40px; gap: 4px; padding: 8px 5px; align-items: center; border-bottom: 1px solid #F9F9F9; }
-        .ss-active { background: var(--ss-bg); }
-        input, textarea { border: 1px solid #DDD; border-radius: 6px; padding: 6px; font-size: 13px; width: 100%; box-sizing: border-box; }
-        .btn-check { height: 32px; width: 32px; border-radius: 6px; border: 1px solid #DDD; background: #EEE; }
+        /* 訓練表格模組 */
+        .ex-module { border: 1px solid #EEE; margin-bottom: 15px; background: white; border-radius: 10px; overflow: hidden; }
+        .module-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #F8F8F8; border-bottom: 1px solid #EEE; }
+        .table-header { display: grid; grid-template-columns: 35px 50px 50px 40px 1fr 35px; gap: 4px; padding: 5px; background: var(--primary); color: white; font-size: 11px; text-align: center; }
+        .ex-row { display: grid; grid-template-columns: 35px 50px 50px 40px 1fr 35px; gap: 4px; padding: 5px; align-items: center; border-bottom: 1px solid #F0F0F0; }
+        .ss-active { background: var(--ss-bg); border-left: 4px solid var(--accent); }
+        
+        input { border: 1px solid #DDD; border-radius: 4px; padding: 5px 2px; text-align: center; font-size: 12px; width: 100%; box-sizing: border-box; }
+        .note-input { text-align: left; padding-left: 5px; }
+        .btn-check { height: 28px; width: 28px; border-radius: 4px; border: 1px solid #DDD; background: #EEE; cursor: pointer; }
         .btn-check.done { background: var(--save); color: white; border: none; }
 
-        /* 圖表容器 */
-        canvas { width: 100% !important; height: 250px !important; }
+        /* 模板庫 */
+        .tpl-card { border: 2px solid var(--accent); margin-bottom: 20px; padding: 10px; border-radius: 10px; background: #FFF; }
         
-        .loading { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); display:none; justify-content:center; align-items:center; z-index:2000; font-weight:bold; }
+        .loading { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); display:none; justify-content:center; align-items:center; z-index:2000; }
     </style>
 </head>
 <body>
 
-<div id="loader" class="loading">同步中...</div>
+<div id="loader" class="loading">⚙️ 同步中...</div>
 
 <div class="container">
     
@@ -58,61 +61,194 @@
             <div class="calendar-grid" id="calendar-days"></div>
         </div>
 
-        <div class="card">
-            <div style="display:flex; gap:10px; margin-bottom:10px;">
-                <div style="flex:1">體重 <input type="number" id="weight" step="0.1"></div>
-                <div style="flex:1">體脂 <input type="number" id="fat" step="0.1"></div>
-            </div>
-            <textarea id="day-note" placeholder="📝 今日訓練心得備註..." rows="2"></textarea>
-            <button onclick="saveToCloud()" style="width:100%; margin-top:10px; padding:10px; background:var(--save); color:white; border:none; border-radius:8px;">儲存並同步雲端</button>
+        <div class="card" style="display:flex; gap:8px; align-items:center;">
+            <span style="font-size:12px;">⚖️ <input type="number" id="weight" step="0.1" style="width:50px"> kg</span>
+            <span style="font-size:12px;">💧 <input type="number" id="fat" step="0.1" style="width:50px"> %</span>
+            <button onclick="saveToCloud()" style="margin-left:auto; background:var(--save); color:white; border:none; padding:8px 15px; border-radius:6px; font-weight:bold;">💾 儲存</button>
         </div>
 
-        <div id="exercise-list"></div>
-        <button onclick="addExercise('train')" style="width:100%; padding:15px; border:2px dashed var(--accent); background:none; border-radius:10px; color:var(--primary); font-weight:bold;">+ 新增動作</button>
+        <div id="train-list"></div>
+        <button onclick="addExercise('train')" style="width:100%; padding:12px; border:2px dashed var(--accent); background:none; border-radius:10px; color:var(--primary); font-weight:bold; margin-top:10px;">+ 手動新增動作</button>
     </div>
 
     <div id="page-library" class="tab-content">
-        <h3>📋 課表模板庫</h3>
-        <p style="font-size:12px; color:#888;">在這裡建立你的標準課表（如：胸背日），完成後可點擊「套用到日曆」。</p>
-        <div id="library-list"></div>
-        <button onclick="addExercise('library')" style="width:100%; padding:15px; border:2px dashed var(--accent); background:none; border-radius:10px; margin-bottom:20px;">+ 建立模板動作</button>
-        <button onclick="applyTemplate()" style="width:100%; padding:15px; background:var(--primary); color:white; border:none; border-radius:10px; font-weight:bold;">📥 將上方動作套用至選定日期</button>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3>📋 課表模板庫</h3>
+            <button onclick="createNewTemplate()" style="background:var(--primary); color:white; border:none; padding:6px 12px; border-radius:6px;">+ 新增整組課表</button>
+        </div>
+        <div id="library-container"></div>
     </div>
 
     <div id="page-charts" class="tab-content">
         <div class="card">
-            <h3>📈 體重/體脂趨勢</h3>
+            <h3>📈 體態追蹤</h3>
             <canvas id="statsChart"></canvas>
         </div>
-        <div id="history-summary" style="font-size:13px; line-height:1.6;"></div>
     </div>
 
 </div>
 
 <div class="bottom-nav">
-    <div class="nav-item active" onclick="switchTab('train', this)">🏋️ 訓練</div>
-    <div class="nav-item" onclick="switchTab('library', this)">📋 模板庫</div>
-    <div class="nav-item" onclick="switchTab('charts', this)">📊 圖表</div>
+    <div class="nav-item active" onclick="switchTab('train', this)">🏋️ 訓練紀錄</div>
+    <div class="nav-item" onclick="switchTab('library', this)">📋 模板管理</div>
+    <div class="nav-item" onclick="switchTab('charts', this)">📊 進度分析</div>
 </div>
 
 <script>
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzdppLufdX1_LV4Tz1Jo8OOiBswmVY2vEiGS19-fYQGVhLtyuqbJ1cnCPJ0c_rkC7y6oQ/exec';
     let selectedDate = new Date().toISOString().split('T')[0];
     let allData = {}; 
-    let libData = JSON.parse(localStorage.getItem('chingyi_lib')) || [];
+    let templates = JSON.parse(localStorage.getItem('workout_tpls')) || [];
     let currentMonth = new Date();
 
-    // --- 分頁切換 ---
     function switchTab(tabId, el) {
         document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
         document.getElementById('page-' + tabId).classList.add('active');
         el.classList.add('active');
         if(tabId === 'charts') renderCharts();
-        if(tabId === 'library') renderLibrary();
     }
 
-    // --- 日曆功能 ---
+    // --- 模板核心邏輯 ---
+    function createNewTemplate() {
+        const name = prompt("請輸入課表名稱（如：週一胸背日）");
+        if(!name) return;
+        templates.push({ id: Date.now(), name: name, exercises: [] });
+        saveTpl(); renderLibrary();
+    }
+
+    function addExToTpl(tplId) {
+        const tpl = templates.find(t => t.id === tplId);
+        tpl.exercises.push({ name: '新動作', isSS: false, sets: [{w:'', r:'', p:'', n:''}] });
+        saveTpl(); renderLibrary();
+    }
+
+    function toggleSSTpl(tplId, exIdx) {
+        templates.find(t => t.id === tplId).exercises[exIdx].isSS = !templates.find(t => t.id === tplId).exercises[exIdx].isSS;
+        saveTpl(); renderLibrary();
+    }
+
+    function applyTpl(tplId) {
+        const tpl = templates.find(t => t.id === tplId);
+        if(!allData[selectedDate]) allData[selectedDate] = { workout: [] };
+        // 深拷貝模板
+        allData[selectedDate].workout = JSON.parse(JSON.stringify(tpl.exercises));
+        switchTab('train', document.querySelectorAll('.nav-item')[0]);
+        loadDateData();
+    }
+
+    function saveTpl() { localStorage.setItem('workout_tpls', JSON.stringify(templates)); }
+
+    // --- 渲染引擎 ---
+    function renderLibrary() {
+        const container = document.getElementById('library-container');
+        container.innerHTML = '';
+        templates.forEach(tpl => {
+            const div = document.createElement('div');
+            div.className = 'tpl-card';
+            div.innerHTML = `
+                <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                    <b>💎 ${tpl.name}</b>
+                    <button onclick="applyTpl(${tpl.id})" style="background:var(--save); color:white; border:none; padding:4px 8px; border-radius:4px; font-size:11px;">套用到選定日期</button>
+                </div>
+                <div id="tpl-ex-${tpl.id}"></div>
+                <button onclick="addExToTpl(${tpl.id})" style="width:100%; font-size:11px; padding:5px; margin-top:5px;">+ 新增動作</button>
+                <button onclick="deleteTpl(${tpl.id})" style="color:red; font-size:10px; border:none; background:none; margin-top:10px;">🗑️ 刪除整個模板</button>
+            `;
+            container.appendChild(div);
+            renderWorkoutList(`tpl-ex-${tpl.id}`, tpl.exercises, false, tpl.id);
+        });
+    }
+
+    function renderWorkoutList(targetId, exArr, isLive, tplId = null) {
+        const list = document.getElementById(targetId);
+        list.innerHTML = '';
+        let charCode = 65; let ssCounter = 0;
+
+        exArr.forEach((ex, exIdx) => {
+            if (exIdx > 0 && !ex.isSS) { charCode++; ssCounter = 1; } else { ssCounter++; }
+            let itemIdx = String.fromCharCode(charCode) + ssCounter;
+
+            const mod = document.createElement('div');
+            mod.className = `ex-module ${ex.isSS ? 'ss-active' : ''}`;
+            mod.innerHTML = `
+                <div class="module-header">
+                    <input class="name-input" style="font-weight:bold; border:none; width:60%" value="${ex.name}" onchange="updateName('${targetId}',${tplId},${exIdx},this.value)">
+                    <div style="font-size:10px; color:#888;">
+                        <span onclick="toggleSSLogic('${targetId}',${tplId},${exIdx})">${ex.isSS?'🔗 已連動':'🔗 超級組'}</span> |
+                        <span onclick="addSetLogic('${targetId}',${tplId},${exIdx})">➕</span> |
+                        <span onclick="delExLogic('${targetId}',${tplId},${exIdx})" style="color:red">🗑️</span>
+                    </div>
+                </div>
+                <div class="table-header"><div>組</div><div>kg</div><div>次</div><div>RPE</div><div>備註</div><div>✓</div></div>
+                ${ex.sets.map((s, sIdx) => `
+                    <div class="ex-row">
+                        <div style="font-size:10px; font-weight:bold">${sIdx===0?itemIdx:(sIdx+1)}</div>
+                        <div><input type="text" value="${s.w}" oninput="updateSetData('${targetId}',${tplId},${exIdx},${sIdx},'w',this.value)"></div>
+                        <div><input type="text" value="${s.r}" oninput="updateSetData('${targetId}',${tplId},${exIdx},${sIdx},'r',this.value)"></div>
+                        <div><input type="text" value="${s.p}" oninput="updateSetData('${targetId}',${tplId},${exIdx},${sIdx},'p',this.value)"></div>
+                        <div><input type="text" class="note-input" value="${s.n||''}" oninput="updateSetData('${targetId}',${tplId},${exIdx},${sIdx},'n',this.value)"></div>
+                        <div><button class="btn-check ${s.d?'done':''}" onclick="toggleCheck(${exIdx},${sIdx})">✓</button></div>
+                    </div>
+                `).join('')}
+            `;
+            list.appendChild(mod);
+        });
+    }
+
+    // --- 共用邏輯處理 (模板 vs 實戰) ---
+    function updateName(target, tplId, exIdx, val) {
+        let arr = tplId ? templates.find(t=>t.id===tplId).exercises : allData[selectedDate].workout;
+        arr[exIdx].name = val; if(tplId) saveTpl();
+    }
+    function updateSetData(target, tplId, exIdx, sIdx, f, v) {
+        let arr = tplId ? templates.find(t=>t.id===tplId).exercises : allData[selectedDate].workout;
+        arr[exIdx].sets[sIdx][f] = v; if(tplId) saveTpl();
+    }
+    function addSetLogic(target, tplId, exIdx) {
+        let arr = tplId ? templates.find(t=>t.id===tplId).exercises : allData[selectedDate].workout;
+        arr[exIdx].sets.push({w:'', r:'', p:'', n:''});
+        tplId ? renderLibrary() : loadDateData();
+    }
+    function toggleSSLogic(target, tplId, exIdx) {
+        let arr = tplId ? templates.find(t=>t.id===tplId).exercises : allData[selectedDate].workout;
+        arr[exIdx].isSS = !arr[exIdx].isSS;
+        tplId ? renderLibrary() : loadDateData();
+    }
+    function delExLogic(target, tplId, exIdx) {
+        let arr = tplId ? templates.find(t=>t.id===tplId).exercises : allData[selectedDate].workout;
+        arr.splice(exIdx,1);
+        tplId ? renderLibrary() : loadDateData();
+    }
+
+    // --- 日曆與同步 (同前版本) ---
+    async function loadFromCloud() {
+        showLoader(true);
+        try {
+            const res = await fetch(SCRIPT_URL);
+            const raw = await res.json();
+            allData = {};
+            raw.slice(1).forEach(row => {
+                allData[row[0]] = { workout: JSON.parse(row[1]), note: row[2], weight: row[3], fat: row[4] };
+            });
+            renderCalendar(); loadDateData();
+        } catch(e) {}
+        showLoader(false);
+    }
+    function loadDateData() {
+        const d = allData[selectedDate] || { workout: [], note: '', weight: '', fat: '' };
+        document.getElementById('weight').value = d.weight;
+        document.getElementById('fat').value = d.fat;
+        renderWorkoutList('train-list', d.workout, true);
+    }
+    async function saveToCloud() {
+        showLoader(true);
+        const dayData = { date: selectedDate, workout: allData[selectedDate].workout, weight: document.getElementById('weight').value, fat: document.getElementById('fat').value };
+        await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(dayData) });
+        allData[selectedDate] = dayData;
+        alert("儲存成功！"); renderCalendar();
+        showLoader(false);
+    }
     function renderCalendar() {
         const grid = document.getElementById('calendar-days');
         document.getElementById('month-label').innerText = `${currentMonth.getFullYear()}年 ${currentMonth.getMonth()+1}月`;
@@ -130,129 +266,8 @@
         }
     }
     function moveMonth(s) { currentMonth.setMonth(currentMonth.getMonth()+s); renderCalendar(); }
-
-    // --- 資料同步 ---
-    async function loadFromCloud() {
-        showLoader(true);
-        try {
-            const res = await fetch(SCRIPT_URL);
-            const raw = await res.json();
-            allData = {};
-            raw.slice(1).forEach(row => {
-                const dateKey = row[0];
-                allData[dateKey] = { workout: JSON.parse(row[1]), note: row[2], weight: row[3], fat: row[4] };
-            });
-            renderCalendar(); loadDateData();
-        } catch(e) { console.error(e); }
-        showLoader(false);
-    }
-
-    function loadDateData() {
-        const data = allData[selectedDate] || { workout: [], note: '', weight: '', fat: '' };
-        document.getElementById('day-note').value = data.note;
-        document.getElementById('weight').value = data.weight;
-        document.getElementById('fat').value = data.fat;
-        renderWorkout('exercise-list', data.workout, true);
-    }
-
-    // --- 模板庫功能 ---
-    function renderLibrary() {
-        renderWorkout('library-list', libData, false);
-    }
-    function applyTemplate() {
-        if(!allData[selectedDate]) allData[selectedDate] = { workout: [], note: '', weight: '', fat: '' };
-        allData[selectedDate].workout = JSON.parse(JSON.stringify(libData));
-        switchTab('train', document.querySelectorAll('.nav-item')[0]);
-        loadDateData();
-    }
-
-    // --- 繪製圖表 ---
-    function renderCharts() {
-        const dates = Object.keys(allData).sort();
-        const weights = dates.map(d => allData[d].weight).filter(w => w > 0);
-        const labels = dates.filter(d => allData[d].weight > 0);
-
-        const ctx = document.getElementById('statsChart').getContext('2d');
-        if(window.myChart) window.myChart.destroy();
-        window.myChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{ label: '體重 (kg)', data: weights, borderColor: '#8C7851', tension: 0.3 }]
-            },
-            options: { responsive: true, maintainAspectRatio: false }
-        });
-    }
-
-    // --- 渲染引擎 (通用) ---
-    function renderWorkout(targetId, dataArr, isRealtime) {
-        const list = document.getElementById(targetId);
-        list.innerHTML = '';
-        dataArr.forEach((ex, exIdx) => {
-            const mod = document.createElement('div');
-            mod.className = 'ex-module';
-            mod.innerHTML = `
-                <div class="module-tools">
-                    <b style="color:var(--primary)">${ex.name}</b>
-                    <span onclick="addSet('${targetId}', ${exIdx})">➕ 增組</span> |
-                    <span onclick="deleteEx('${targetId}', ${exIdx})" style="color:red">🗑️</span>
-                </div>
-                ${ex.sets.map((s, sIdx) => `
-                    <div class="ex-row ${ex.isSS ? 'ss-active' : ''}">
-                        <div>${sIdx+1}</div>
-                        <div>${sIdx===0 ? `<input value="${ex.name}" onchange="updateEx('${targetId}',${exIdx},'name',this.value)">` : ''}</div>
-                        <div><input type="text" value="${s.w}" placeholder="kg" oninput="updateSet('${targetId}',${exIdx},${sIdx},'w',this.value)"></div>
-                        <div><input type="text" value="${s.r}" placeholder="次" oninput="updateSet('${targetId}',${exIdx},${sIdx},'r',this.value)"></div>
-                        <div style="text-align:center;"><button class="btn-check ${s.d?'done':''}" onclick="toggleCheck(${exIdx},${sIdx})">✓</button></div>
-                    </div>
-                `).join('')}
-            `;
-            list.appendChild(mod);
-        });
-    }
-
-    // --- 核心邏輯 ---
-    function updateEx(target, idx, f, v) { 
-        let d = target==='library-list' ? libData : allData[selectedDate].workout;
-        d[idx][f] = v; 
-        if(target==='library-list') localStorage.setItem('chingyi_lib', JSON.stringify(libData));
-    }
-    function updateSet(target, exIdx, sIdx, f, v) {
-        let d = target==='library-list' ? libData : allData[selectedDate].workout;
-        d[exIdx].sets[sIdx][f] = v;
-        if(target==='library-list') localStorage.setItem('chingyi_lib', JSON.stringify(libData));
-    }
-    function addExercise(type) {
-        let newItem = { name: '新動作', isSS: false, sets: [{w:'', r:'', d:false}] };
-        if(type==='library') { libData.push(newItem); renderLibrary(); }
-        else { 
-            if(!allData[selectedDate]) allData[selectedDate]={workout:[],note:'',weight:'',fat:''};
-            allData[selectedDate].workout.push(newItem); loadDateData(); 
-        }
-    }
-    function addSet(target, idx) {
-        let d = target==='library-list' ? libData : allData[selectedDate].workout;
-        d[idx].sets.push({w:'', r:'', d:false});
-        target==='library-list' ? renderLibrary() : loadDateData();
-    }
-    function deleteEx(target, idx) {
-        let d = target==='library-list' ? libData : allData[selectedDate].workout;
-        d.splice(idx,1);
-        target==='library-list' ? renderLibrary() : loadDateData();
-    }
-    function toggleCheck(exIdx, sIdx) {
-        allData[selectedDate].workout[exIdx].sets[sIdx].d = !allData[selectedDate].workout[exIdx].sets[sIdx].d;
-        loadDateData();
-    }
-    async function saveToCloud() {
-        showLoader(true);
-        const dayData = { date: selectedDate, workout: allData[selectedDate].workout, note: document.getElementById('day-note').value, weight: document.getElementById('weight').value, fat: document.getElementById('fat').value };
-        await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(dayData) });
-        allData[selectedDate] = dayData;
-        alert("儲存成功！"); renderCalendar();
-        showLoader(false);
-    }
     function showLoader(s) { document.getElementById('loader').style.display = s ? 'flex' : 'none'; }
+    function toggleCheck(exIdx, sIdx) { allData[selectedDate].workout[exIdx].sets[sIdx].d = !allData[selectedDate].workout[exIdx].sets[sIdx].d; loadDateData(); }
 
     window.onload = loadFromCloud;
 </script>
