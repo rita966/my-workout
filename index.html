@@ -25,20 +25,19 @@
         .calendar-day.has-data::after { content: '•'; position: absolute; bottom: 2px; left: 45%; color: var(--save); }
         .ex-module { border: 1px solid #EEE; margin-bottom: 6px; background: white; border-radius: 10px; overflow: hidden; }
         .module-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #F8F8F8; border-bottom: 1px solid #EEE; }
-        .table-header { display: grid; grid-template-columns: 35px 45px 45px 40px 1fr 30px 30px; gap: 4px; padding: 5px; background: var(--primary); color: white; font-size: 10px; text-align: center; }
-        .ex-row { display: grid; grid-template-columns: 35px 45px 45px 40px 1fr 30px 30px; gap: 4px; padding: 6px 5px; align-items: center; border-bottom: 1px solid #F0F0F0; }
+        .table-header { display: grid; grid-template-columns: 35px 45px 45px 35px 1fr 30px 30px; gap: 4px; padding: 5px; background: var(--primary); color: white; font-size: 10px; text-align: center; }
+        .ex-row { display: grid; grid-template-columns: 35px 45px 45px 35px 1fr 30px 30px; gap: 4px; padding: 6px 5px; align-items: center; border-bottom: 1px solid #F0F0F0; }
         .ss-active { border-left: 8px solid var(--ss-border); background: var(--ss-bg); }
         input { border: 1px solid #DDD; border-radius: 4px; padding: 5px 2px; text-align: center; font-size: 12px; width: 100%; box-sizing: border-box; }
-        .btn-check { height: 26px; width: 26px; border-radius: 4px; border: 1px solid #DDD; background: #EEE; cursor: pointer; font-size: 12px; }
+        .btn-check { height: 26px; width: 26px; border-radius: 4px; border: 1px solid #DDD; background: #EEE; cursor: pointer; }
         .btn-check.done { background: var(--save); color: white; border: none; }
-        .btn-del-set { background: none; border: none; color: #BBB; cursor: pointer; font-size: 16px; }
         .btn-action { background: var(--primary); color: white; border: none; padding: 10px; border-radius: 8px; font-weight: bold; width: 100%; margin-top: 5px; cursor: pointer; }
         .loading { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); display:none; justify-content:center; align-items:center; z-index:2000; font-weight:bold; }
     </style>
 </head>
 <body>
 
-<div id="loader" class="loading">⚙️ 同步雲端...</div>
+<div id="loader" class="loading">⚙️ 正在同步資料...</div>
 
 <div class="container">
     <div id="page-train" class="tab-content active">
@@ -51,13 +50,13 @@
             <div class="calendar-grid" id="calendar-days"></div>
         </div>
         <div class="card" style="display:flex; gap:8px; align-items:center;">
-            <span style="font-size:12px; font-weight:bold; color:var(--primary);" id="selected-date-label"></span>
+            <b id="selected-date-label" style="font-size:12px; color:var(--primary)"></b>
             <span style="font-size:11px;">⚖️ <input type="number" id="weight" step="0.1" style="width:45px"> kg</span>
             <span style="font-size:11px;">💧 <input type="number" id="fat" step="0.1" style="width:45px"> %</span>
             <button onclick="saveWorkout()" style="margin-left:auto; background:var(--save); color:white; border:none; padding:8px 12px; border-radius:6px; font-size:12px;">💾 儲存</button>
         </div>
         <div id="train-list"></div>
-        <button class="btn-action" style="background:#888" onclick="addExLogic('train-list', null)">+ 手動新增動作</button>
+        <button class="btn-action" style="background:#888" onclick="addExLogic('train-list', null)">+ 新增手動動作</button>
     </div>
 
     <div id="page-library" class="tab-content">
@@ -71,17 +70,17 @@
 
     <div id="page-charts" class="tab-content">
         <div class="card">
-            <h3 style="margin:0">📊 訓練強度追蹤</h3>
-            <select id="exercise-selector" onchange="renderExerciseChart()" style="margin: 10px 0; width: 100%; padding: 8px; border-radius: 6px;"></select>
+            <h3>📊 訓練強度追蹤</h3>
+            <select id="exercise-selector" onchange="renderExerciseChart()" style="margin-bottom:10px; width:100%; padding:8px; border-radius:6px; border:1px solid #DDD;"></select>
             <div style="height:300px"><canvas id="progressChart"></canvas></div>
         </div>
     </div>
 </div>
 
 <div class="bottom-nav">
-    <div class="nav-item active" onclick="switchTab('train', this)">🏋️ 訓練</div>
+    <div class="nav-item active" onclick="switchTab('train', this)">🏋️ 訓練記錄</div>
     <div class="nav-item" onclick="switchTab('library', this)">📋 模板</div>
-    <div class="nav-item" onclick="switchTab('charts', this)">📊 分析</div>
+    <div class="nav-item" onclick="switchTab('charts', this)">📊 訓練強度追蹤</div>
 </div>
 
 <script>
@@ -98,10 +97,34 @@
         if(tabId === 'charts') updateExSelector();
     }
 
+    async function syncAll() {
+        showLoader(true);
+        try {
+            const res = await fetch(SCRIPT_URL);
+            const data = await res.json();
+            allData = {};
+            if(data.history && data.history.length > 1) {
+                data.history.slice(1).forEach(row => {
+                    // 強制轉為 YYYY-MM-DD
+                    let dStr = row[0];
+                    if (typeof dStr === 'string' && dStr.includes('T')) dStr = dStr.split('T')[0];
+                    allData[dStr] = { workout: JSON.parse(row[1]), weight: row[2], fat: row[3] };
+                });
+            }
+            templates = [];
+            if(data.templates && data.templates.length > 1) {
+                data.templates.slice(1).forEach(row => {
+                    templates.push({ id: row[0], name: row[1], exercises: JSON.parse(row[2]) });
+                });
+            }
+            renderCalendar(); renderLibrary(); loadDateData();
+        } catch(e) { console.error("同步失敗:", e); }
+        showLoader(false);
+    }
+
     function renderList(targetId, exArr, tplId = null) {
         const list = document.getElementById(targetId); list.innerHTML = '';
-        let charIndex = 0;
-        let displayLabels = [];
+        let charIndex = 0; let displayLabels = [];
         for (let i = 0; i < exArr.length; i++) {
             if (i > 0 && exArr[i].isSS) {
                 let prevLabel = displayLabels[i-1];
@@ -116,7 +139,6 @@
                 displayLabels[i] = String.fromCharCode(65 + charIndex);
             }
         }
-
         exArr.forEach((ex, exIdx) => {
             const label = displayLabels[exIdx];
             const mod = document.createElement('div');
@@ -125,21 +147,19 @@
                 <div class="module-header">
                     <input style="font-weight:bold; border:none; background:transparent; font-size:13px;" value="${ex.name}" onchange="uEx('${targetId}',${tplId},${exIdx},'name',this.value)">
                     <div style="font-size:10px;">
-                        <span onclick="tSS('${targetId}',${tplId},${exIdx})" style="cursor:pointer; color:${ex.isSS?'var(--save)':'#888'}">${ex.isSS?'🔗 已連動':'🔗 連動超級組'}</span> | 
-                        <span onclick="aS('${targetId}',${tplId},${exIdx})" style="cursor:pointer">➕ 增組</span> | 
-                        <span onclick="dE('${targetId}',${tplId},${exIdx})" style="color:red; cursor:pointer">🗑️</span>
+                        <span onclick="tSS('${targetId}',${tplId},${exIdx})" style="cursor:pointer">${ex.isSS?'🔗 已連動':'🔗 連動超級組'}</span> | <span onclick="aS('${targetId}',${tplId},${exIdx})">➕</span> | <span onclick="dE('${targetId}',${tplId},${exIdx})" style="color:red">🗑️</span>
                     </div>
                 </div>
                 <div class="table-header"><div>${label}</div><div>kg</div><div>次</div><div>RPE</div><div>備註</div><div>✓</div><div></div></div>
                 ${ex.sets.map((s, sIdx) => `
                     <div class="ex-row">
-                        <div style="font-size:10px; font-weight:bold">${sIdx+1}</div>
+                        <div style="font-size:10px;">${sIdx+1}</div>
                         <div><input type="text" value="${s.w}" oninput="uS('${targetId}',${tplId},${exIdx},${sIdx},'w',this.value)"></div>
                         <div><input type="text" value="${s.r}" oninput="uS('${targetId}',${tplId},${exIdx},${sIdx},'r',this.value)"></div>
                         <div><input type="text" value="${s.p}" oninput="uS('${targetId}',${tplId},${exIdx},${sIdx},'p',this.value)"></div>
                         <div><input type="text" style="text-align:left; padding-left:4px;" value="${s.n||''}" oninput="uS('${targetId}',${tplId},${exIdx},${sIdx},'n',this.value)"></div>
                         <div><button class="btn-check ${s.d?'done':''}" onclick="tC(${exIdx},${sIdx})">✓</button></div>
-                        <div><button class="btn-del-set" onclick="removeSetLogic('${targetId}',${tplId},${exIdx},${sIdx})">×</button></div>
+                        <div style="text-align:center"><span onclick="rSL('${targetId}',${tplId},${exIdx},${sIdx})" style="color:#CCC; cursor:pointer">×</span></div>
                     </div>
                 `).join('')}
             `;
@@ -147,80 +167,38 @@
         });
     }
 
-    // 更新圖表下拉選單
-    function updateExSelector() {
-        const sel = document.getElementById('exercise-selector');
-        const names = new Set();
-        Object.values(allData).forEach(d => d.workout.forEach(e => names.add(e.name)));
-        sel.innerHTML = '<option value="">-- 請選擇動作 --</option>';
-        Array.from(names).sort().forEach(n => sel.innerHTML += `<option value="${n}">${n}</option>`);
-    }
-
-    // 渲染圖表
-    function renderExerciseChart() {
-        const name = document.getElementById('exercise-selector').value;
-        if(!name) return;
-        const pts = [];
-        Object.keys(allData).sort().forEach(date => {
-            const ex = allData[date].workout.find(e => e.name === name);
-            if(ex) {
-                const maxW = Math.max(...ex.sets.map(s => parseFloat(s.w) || 0));
-                if(maxW > 0) pts.push({ x: date, y: maxW });
-            }
-        });
-        const ctx = document.getElementById('progressChart').getContext('2d');
-        if(myChart) myChart.destroy();
-        myChart = new Chart(ctx, {
-            type: 'line',
-            data: { datasets: [{ label: name + ' (Max kg)', data: pts, borderColor: '#8C7851', backgroundColor: 'rgba(140, 120, 81, 0.1)', fill: true, tension: 0.3 }] },
-            options: { responsive: true, maintainAspectRatio: false, scales: { x: { display: true }, y: { beginAtZero: false } } }
-        });
-    }
-
-    // 其他邏輯
-    async function syncAll() {
-        showLoader(true);
-        try {
-            const res = await fetch(SCRIPT_URL);
-            const data = await res.json();
-            allData = {};
-            if(data.history) data.history.slice(1).forEach(row => { if(row[0]) allData[row[0]] = { workout: JSON.parse(row[1]), weight: row[2], fat: row[3] }; });
-            templates = [];
-            if(data.templates) data.templates.slice(1).forEach(row => { templates.push({ id: row[0], name: row[1], exercises: JSON.parse(row[2]) }); });
-            renderCalendar(); renderLibrary(); loadDateData();
-        } catch(e) {}
-        showLoader(false);
-    }
-    
     async function saveWorkout() {
         showLoader(true);
-        const payload = { type: "workout", date: selectedDate, workout: allData[selectedDate]?.workout || [], weight: document.getElementById('weight').value, fat: document.getElementById('fat').value };
+        const w = document.getElementById('weight').value;
+        const f = document.getElementById('fat').value;
+        const payload = { type: "workout", date: selectedDate, workout: allData[selectedDate]?.workout || [], weight: w, fat: f };
         await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
         await syncAll();
-        showLoader(false);
     }
 
     async function saveTemplates() {
         showLoader(true);
         await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ type: "template", content: templates }) });
-        alert("同步成功");
+        alert("模板同步成功");
         showLoader(false);
     }
 
-    function uEx(tid,tplId,ei,f,v) { let a = tplId?templates.find(t=>t.id===tplId).exercises : allData[selectedDate].workout; a[ei][f]=v; }
-    function uS(tid,tplId,ei,si,f,v) { let a = tplId?templates.find(t=>t.id===tplId).exercises : allData[selectedDate].workout; a[ei].sets[si][f]=v; }
-    function aS(tid,tplId,ei) { let a = tplId?templates.find(t=>t.id===tplId).exercises : allData[selectedDate].workout; a[ei].sets.push({w:'',r:'',p:'',n:'',d:false}); tplId?renderLibrary():loadDateData(); }
-    function tSS(tid,tplId,ei) { if(ei===0)return; let a=tplId?templates.find(t=>t.id===tplId).exercises:allData[selectedDate].workout; a[ei].isSS=!a[ei].isSS; tplId?renderLibrary():loadDateData(); }
-    function dE(tid,tplId,ei) { let a=tplId?templates.find(t=>t.id===tplId).exercises:allData[selectedDate].workout; a.splice(ei,1); tplId?renderLibrary():loadDateData(); }
-    function removeSetLogic(tid,tplId,exIdx,sIdx) { let a=tplId?templates.find(t=>t.id===tplId).exercises:allData[selectedDate].workout; if(a[exIdx].sets.length>1){a[exIdx].sets.splice(sIdx,1); tplId?renderLibrary():loadDateData();} }
-    function addExLogic(tid,tplId) { if(!allData[selectedDate])allData[selectedDate]={workout:[],weight:'',fat:''}; let a=tplId?templates.find(t=>t.id===tplId).exercises:allData[selectedDate].workout; a.push({name:'新動作',isSS:false,sets:[{w:'',r:'',p:'',n:'',d:false}]}); tplId?renderLibrary():loadDateData(); }
-    function tC(ei,si) { allData[selectedDate].workout[ei].sets[si].d = !allData[selectedDate].workout[ei].sets[si].d; loadDateData(); }
+    function uEx(tid,tl,ei,f,v) { let a=tl?templates.find(t=>t.id===tl).exercises:allData[selectedDate].workout; a[ei][f]=v; }
+    function uS(tid,tl,ei,si,f,v) { let a=tl?templates.find(t=>t.id===tl).exercises:allData[selectedDate].workout; a[ei].sets[si][f]=v; }
+    function aS(tid,tl,ei) { let a=tl?templates.find(t=>t.id===tl).exercises:allData[selectedDate].workout; a[ei].sets.push({w:'',r:'',p:'',n:'',d:false}); tl?renderLibrary():loadDateData(); }
+    function tSS(tid,tl,ei) { if(ei===0)return; let a=tl?templates.find(t=>t.id===tl).exercises:allData[selectedDate].workout; a[ei].isSS=!a[ei].isSS; tl?renderLibrary():loadDateData(); }
+    function dE(tid,tl,ei) { let a=tl?templates.find(t=>t.id===tl).exercises:allData[selectedDate].workout; a.splice(ei,1); tl?renderLibrary():loadDateData(); }
+    function rSL(tid,tl,ei,si) { let a=tl?templates.find(t=>t.id===tl).exercises:allData[selectedDate].workout; if(a[ei].sets.length>1){a[ei].sets.splice(si,1); tl?renderLibrary():loadDateData();} }
+    function addExLogic(tid,tl) { if(!allData[selectedDate])allData[selectedDate]={workout:[],weight:'',fat:''}; let a=tl?templates.find(t=>t.id===tl).exercises:allData[selectedDate].workout; a.push({name:'新動作',isSS:false,sets:[{w:'',r:'',p:'',n:'',d:false}]}); tl?renderLibrary():loadDateData(); }
+    function tC(ei,si) { allData[selectedDate].workout[ei].sets[si].d=!allData[selectedDate].workout[ei].sets[si].d; loadDateData(); }
     function applyTpl(id) { if(!allData[selectedDate])allData[selectedDate]={workout:[],weight:'',fat:''}; allData[selectedDate].workout=JSON.parse(JSON.stringify(templates.find(t=>t.id===id).exercises)); switchTab('train',document.querySelectorAll('.nav-item')[0]); loadDateData(); renderCalendar(); }
-    function moveMonth(s) { currentMonth.setMonth(currentMonth.getMonth()+s); renderCalendar(); }
     function loadDateData() { const d=allData[selectedDate]||{workout:[],weight:'',fat:''}; document.getElementById('weight').value=d.weight||''; document.getElementById('fat').value=d.fat||''; document.getElementById('selected-date-label').innerText=selectedDate; renderList('train-list', d.workout); }
     function renderCalendar() { const grid=document.getElementById('calendar-days'); document.getElementById('month-label').innerText=`${currentMonth.getFullYear()}年 ${currentMonth.getMonth()+1}月`; grid.innerHTML=''; const first=new Date(currentMonth.getFullYear(),currentMonth.getMonth(),1).getDay(); const days=new Date(currentMonth.getFullYear(),currentMonth.getMonth()+1,0).getDate(); for(let i=0;i<first;i++)grid.appendChild(document.createElement('div')); for(let d=1;d<=days;d++){ const ds=`${currentMonth.getFullYear()}-${String(currentMonth.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`; const el=document.createElement('div'); el.className='calendar-day'+(ds===selectedDate?' active':'')+(allData[ds]?' has-data':''); el.innerText=d; el.onclick=()=>{selectedDate=ds;renderCalendar();loadDateData();}; grid.appendChild(el); } }
-    function createNewTemplate() { const n=prompt("名稱？"); if(n){templates.push({id:Date.now(),name:n,exercises:[]});renderLibrary();} }
-    function renderLibrary() { const c=document.getElementById('library-container'); c.innerHTML=''; templates.forEach(tpl=>{ const d=document.createElement('div'); d.className='card'; d.innerHTML=`<b>💎 ${tpl.name}</b> <button onclick="applyTpl(${tpl.id})" style="float:right">套用</button><div id="tpl-ex-${tpl.id}"></div><button class="btn-action" style="background:#AAA" onclick="addExLogic('tpl-ex-${tpl.id}',${tpl.id})">+動作</button>`; c.appendChild(d); renderList(`tpl-ex-${tpl.id}`, tpl.exercises, tpl.id); }); }
+    function moveMonth(s) { currentMonth.setMonth(currentMonth.getMonth()+s); renderCalendar(); }
+    function createNewTemplate() { const n=prompt("建立名稱"); if(n){templates.push({id:Date.now(),name:n,exercises:[]});renderLibrary();} }
+    function renderLibrary() { const c=document.getElementById('library-container'); c.innerHTML=''; templates.forEach(tpl=>{ const d=document.createElement('div'); d.className='card'; d.innerHTML=`<b>💪🏻 ${tpl.name}</b> <button onclick="applyTpl(${tpl.id})" style="float:right">套用</button><div id="tpl-ex-${tpl.id}"></div><button class="btn-action" style="background:#AAA" onclick="addExLogic('tpl-ex-${tpl.id}',${tpl.id})">+動作</button>`; c.appendChild(d); renderList(`tpl-ex-${tpl.id}`, tpl.exercises, tpl.id); }); }
+    function updateExSelector() { const sel=document.getElementById('exercise-selector'); const names=new Set(); Object.values(allData).forEach(d=>d.workout.forEach(e=>names.add(e.name))); sel.innerHTML='<option value="">-- 動作分析 --</option>'; Array.from(names).sort().forEach(n=>sel.innerHTML+=`<option value="${n}">${n}</option>`); }
+    function renderExerciseChart() { const name=document.getElementById('exercise-selector').value; if(!name)return; const pts=[]; Object.keys(allData).sort().forEach(date=>{ const ex=allData[date].workout.find(e=>e.name===name); if(ex){ const maxW=Math.max(...ex.sets.map(s=>parseFloat(s.w)||0)); if(maxW>0)pts.push({x:date,y:maxW}); } }); const ctx=document.getElementById('progressChart').getContext('2d'); if(myChart)myChart.destroy(); myChart=new Chart(ctx,{type:'line',data:{datasets:[{label:name+'(kg)',data:pts,borderColor:'#8C7851',tension:0.3}]},options:{responsive:true,maintainAspectRatio:false}}); }
     function showLoader(s) { document.getElementById('loader').style.display=s?'flex':'none'; }
     window.onload = syncAll;
 </script>
