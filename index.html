@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>💪🏻 健身課表</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --bg: #F5F2ED; --card: #FFFFFF; --primary: #8C7851; --accent: #B0A990;
@@ -13,7 +12,6 @@
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding-bottom: 70px; color: var(--text); }
         .container { width: 100%; max-width: 650px; margin: 0 auto; padding: 10px; box-sizing: border-box; }
         
-        /* 頁面切換 */
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         .bottom-nav { position: fixed; bottom: 0; width: 100%; background: white; display: flex; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); z-index: 1000; }
@@ -26,23 +24,25 @@
         .calendar-day.active { background: var(--primary); color: white; }
         .calendar-day.has-data::after { content: '•'; display: block; color: var(--save); margin-top: -5px; }
 
-        /* 訓練表格模組 */
+        /* 訓練模組 */
         .ex-module { border: 1px solid #EEE; margin-bottom: 15px; background: white; border-radius: 10px; overflow: hidden; }
         .module-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #F8F8F8; border-bottom: 1px solid #EEE; }
-        .table-header { display: grid; grid-template-columns: 35px 50px 50px 40px 1fr 35px; gap: 4px; padding: 5px; background: var(--primary); color: white; font-size: 11px; text-align: center; }
-        .ex-row { display: grid; grid-template-columns: 35px 50px 50px 40px 1fr 35px; gap: 4px; padding: 5px; align-items: center; border-bottom: 1px solid #F0F0F0; }
+        .table-header { display: grid; grid-template-columns: 30px 45px 45px 35px 1fr 35px; gap: 4px; padding: 5px; background: var(--primary); color: white; font-size: 10px; text-align: center; }
+        .ex-row { display: grid; grid-template-columns: 30px 45px 45px 35px 1fr 35px; gap: 4px; padding: 5px; align-items: center; border-bottom: 1px solid #F0F0F0; }
         .ss-active { background: var(--ss-bg); border-left: 4px solid var(--accent); }
         
         input { border: 1px solid #DDD; border-radius: 4px; padding: 5px 2px; text-align: center; font-size: 12px; width: 100%; box-sizing: border-box; }
+        input.note-input { text-align: left; padding-left: 5px; color: #666; font-size: 11px; }
         .btn-check { height: 28px; width: 28px; border-radius: 4px; border: 1px solid #DDD; background: #EEE; cursor: pointer; }
         .btn-check.done { background: var(--save); color: white; border: none; }
 
+        .btn-action { background: var(--primary); color: white; border: none; padding: 8px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 5px; }
         .loading { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); display:none; justify-content:center; align-items:center; z-index:2000; font-weight:bold; }
     </style>
 </head>
 <body>
 
-<div id="loader" class="loading">☁️ 正在與雲端同步...</div>
+<div id="loader" class="loading">⚙️ 同步雲端中...</div>
 
 <div class="container">
     <div id="page-train" class="tab-content active">
@@ -54,36 +54,33 @@
             </div>
             <div class="calendar-grid" id="calendar-days"></div>
         </div>
-        <div class="card" style="display:flex; gap:8px;">
-            <span style="font-size:12px;">⚖️ <input type="number" id="weight" step="0.1" style="width:45px"> kg</span>
-            <span style="font-size:12px;">💧 <input type="number" id="fat" step="0.1" style="width:45px"> %</span>
-            <button onclick="saveWorkout()" style="margin-left:auto; background:var(--save); color:white; border:none; padding:8px 12px; border-radius:6px;">💾 儲存今日</button>
+        <div class="card" style="display:flex; gap:8px; align-items:center;">
+            <span style="font-size:12px; font-weight:bold; color:var(--primary);" id="selected-date-label"></span>
+            <span style="font-size:11px;">體重 <input type="number" id="weight" step="0.1" style="width:45px"></span>
+            <span style="font-size:11px;">體脂 <input type="number" id="fat" step="0.1" style="width:45px"></span>
+            <button onclick="saveWorkout()" style="margin-left:auto; background:var(--save); color:white; border:none; padding:8px 12px; border-radius:6px; font-size:12px;">💾 儲存</button>
         </div>
         <div id="train-list"></div>
+        <button class="btn-action" style="background:#888" onclick="addExLogic('train-list', null)">+ 新增手動動作</button>
     </div>
 
     <div id="page-library" class="tab-content">
         <div style="display:flex; justify-content:space-between; align-items:center;">
-            <h3>📋 雲端共享模板庫</h3>
-            <button onclick="saveTemplates()" style="background:var(--save); color:white; border:none; padding:8px 12px; border-radius:6px;">💾 儲存模板庫</button>
+            <h3>📋 共享課表模板</h3>
+            <button onclick="saveTemplates()" style="background:var(--save); color:white; border:none; padding:8px 12px; border-radius:6px; font-size:12px;">💾 儲存模板</button>
         </div>
-        <button onclick="createNewTemplate()" style="width:100%; padding:10px; margin-bottom:15px; background:var(--primary); color:white; border:none; border-radius:8px;">+ 建立整組課表模板</button>
-        <div id="library-container"></div>
-    </div>
-
-    <div id="page-charts" class="tab-content">
-        <div class="card"><h3>📈 進度圖表</h3><canvas id="statsChart"></canvas></div>
+        <button class="btn-action" onclick="createNewTemplate()">+ 建立全新模板組</button>
+        <div id="library-container" style="margin-top:15px;"></div>
     </div>
 </div>
 
 <div class="bottom-nav">
     <div class="nav-item active" onclick="switchTab('train', this)">🏋️ 訓練</div>
     <div class="nav-item" onclick="switchTab('library', this)">📋 模板</div>
-    <div class="nav-item" onclick="switchTab('charts', this)">📊 分析</div>
 </div>
 
 <script>
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzdppLufdX1_LV4Tz1Jo8OOiBswmVY2vEiGS19-fYQGVhLtyuqbJ1cnCPJ0c_rkC7y6oQ/exec';
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzdppLufdX1_LV4Tz1Jo8OOiBswmVY2vEiGS19-fYQGVhLtyuqbJ1cnCPJ0c_rkC7y6oQ/exec'; 
     let selectedDate = new Date().toISOString().split('T')[0];
     let allData = {}; let templates = []; let currentMonth = new Date();
 
@@ -92,27 +89,23 @@
         document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
         document.getElementById('page-' + tabId).classList.add('active');
         el.classList.add('active');
-        if(tabId === 'charts') renderCharts();
     }
 
-    // --- 雲端同步核心 ---
     async function syncAll() {
         showLoader(true);
         try {
             const res = await fetch(SCRIPT_URL);
             const data = await res.json();
-            // 解析訓練紀錄
             allData = {};
             data.history.slice(1).forEach(row => {
-                allData[row[0]] = { workout: JSON.parse(row[1]), note: row[2], weight: row[3], fat: row[4] };
+                allData[row[0]] = { workout: JSON.parse(row[1]), weight: row[2], fat: row[3] };
             });
-            // 解析雲端模板
             templates = [];
             data.templates.slice(1).forEach(row => {
                 templates.push({ id: row[0], name: row[1], exercises: JSON.parse(row[2]) });
             });
             renderCalendar(); renderLibrary(); loadDateData();
-        } catch(e) { alert("同步失敗，請檢查網址或權限。"); }
+        } catch(e) { console.error(e); }
         showLoader(false);
     }
 
@@ -125,26 +118,30 @@
 
     async function saveTemplates() {
         showLoader(true);
-        const data = { type: "template", content: templates };
-        await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(data) });
-        alert("模板庫已同步至雲端，所有人可見！");
+        await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ type: "template", content: templates }) });
+        alert("模板同步成功！");
         showLoader(false);
     }
 
-    // --- 模板邏輯 ---
     function createNewTemplate() {
-        const name = prompt("課表名稱？"); if(!name) return;
-        templates.push({ id: Date.now(), name: name, exercises: [] }); renderLibrary();
+        const name = prompt("模板名稱（如：推系列）");
+        if(!name) return;
+        templates.push({ id: Date.now(), name: name, exercises: [{name:'新動作',isSS:false,sets:[{w:'',r:'',p:'',n:''}]}] });
+        renderLibrary();
     }
+
     function renderLibrary() {
         const container = document.getElementById('library-container'); container.innerHTML = '';
         templates.forEach(tpl => {
             const div = document.createElement('div'); div.className = 'card';
             div.innerHTML = `
-                <div style="display:flex; justify-content:space-between;"><b>💎 ${tpl.name}</b> 
-                <button onclick="applyTpl(${tpl.id})" style="background:var(--primary); color:white; border:none; font-size:10px; padding:4px 8px; border-radius:4px;">套用到今日</button></div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <b style="color:var(--primary)">💎 ${tpl.name}</b> 
+                    <button onclick="applyTpl(${tpl.id})" style="background:var(--primary); color:white; border:none; font-size:10px; padding:5px 10px; border-radius:5px;">套用至選定日</button>
+                </div>
                 <div id="tpl-ex-${tpl.id}"></div>
-                <button onclick="addExToTpl(${tpl.id})" style="width:100%; margin-top:10px; font-size:11px;">+ 動作</button>
+                <button class="btn-action" style="background:#AAA; font-size:11px; padding:5px;" onclick="addExLogic('tpl-ex-${tpl.id}', ${tpl.id})">+ 新增動作內容</button>
+                <button onclick="deleteTpl(${tpl.id})" style="color:red; font-size:10px; border:none; background:none; margin-top:10px; width:100%; text-align:right;">🗑️ 刪除模板</button>
             `;
             container.appendChild(div);
             renderList(`tpl-ex-${tpl.id}`, tpl.exercises, tpl.id);
@@ -161,19 +158,21 @@
             mod.className = `ex-module ${ex.isSS ? 'ss-active' : ''}`;
             mod.innerHTML = `
                 <div class="module-header">
-                    <input style="font-weight:bold; border:none; background:transparent;" value="${ex.name}" onchange="uEx('${targetId}',${tplId},${exIdx},'name',this.value)">
+                    <input style="font-weight:bold; border:none; background:transparent; font-size:13px;" value="${ex.name}" onchange="uEx('${targetId}',${tplId},${exIdx},'name',this.value)">
                     <div style="font-size:10px;">
-                        <span onclick="tSS('${targetId}',${tplId},${exIdx})">🔗 SS</span> | <span onclick="aS('${targetId}',${tplId},${exIdx})">➕</span> | <span onclick="dE('${targetId}',${tplId},${exIdx})" style="color:red">🗑️</span>
+                        <span onclick="tSS('${targetId}',${tplId},${exIdx})" style="cursor:pointer">${ex.isSS?'🔗 SS中':'🔗 超級組'}</span> | 
+                        <span onclick="aS('${targetId}',${tplId},${exIdx})" style="cursor:pointer">➕ 增組</span> | 
+                        <span onclick="dE('${targetId}',${tplId},${exIdx})" style="color:red; cursor:pointer">🗑️</span>
                     </div>
                 </div>
                 <div class="table-header"><div>組</div><div>kg</div><div>次</div><div>RPE</div><div>備註</div><div>✓</div></div>
                 ${ex.sets.map((s, sIdx) => `
                     <div class="ex-row">
-                        <div style="font-size:10px;">${sIdx===0?itemIdx:(sIdx+1)}</div>
+                        <div style="font-size:10px; font-weight:bold">${sIdx===0?itemIdx:(sIdx+1)}</div>
                         <div><input type="text" value="${s.w}" oninput="uS('${targetId}',${tplId},${exIdx},${sIdx},'w',this.value)"></div>
                         <div><input type="text" value="${s.r}" oninput="uS('${targetId}',${tplId},${exIdx},${sIdx},'r',this.value)"></div>
                         <div><input type="text" value="${s.p}" oninput="uS('${targetId}',${tplId},${exIdx},${sIdx},'p',this.value)"></div>
-                        <div><input type="text" value="${s.n||''}" oninput="uS('${targetId}',${tplId},${exIdx},${sIdx},'n',this.value)"></div>
+                        <div><input type="text" class="note-input" placeholder="備註..." value="${s.n||''}" oninput="uS('${targetId}',${tplId},${exIdx},${sIdx},'n',this.value)"></div>
                         <div><button class="btn-check ${s.d?'done':''}" onclick="tC(${exIdx},${sIdx})">✓</button></div>
                     </div>
                 `).join('')}
@@ -182,18 +181,32 @@
         });
     }
 
-    // --- 簡化邏輯函式 ---
-    function uEx(tid, tid2, ei, f, v) { let a = tid2 ? templates.find(t=>t.id===tid2).exercises : allData[selectedDate].workout; a[ei][f] = v; }
-    function uS(tid, tid2, ei, si, f, v) { let a = tid2 ? templates.find(t=>t.id===tid2).exercises : allData[selectedDate].workout; a[ei].sets[si][f] = v; }
-    function aS(tid, tid2, ei) { let a = tid2 ? templates.find(t=>t.id===tid2).exercises : allData[selectedDate].workout; a[ei].sets.push({w:'',r:'',p:'',n:'',d:false}); tid2?renderLibrary():loadDateData(); }
-    function tSS(tid, tid2, ei) { let a = tid2 ? templates.find(t=>t.id===tid2).exercises : allData[selectedDate].workout; a[ei].isSS = !a[ei].isSS; tid2?renderLibrary():loadDateData(); }
-    function dE(tid, tid2, ei) { let a = tid2 ? templates.find(t=>t.id===tid2).exercises : allData[selectedDate].workout; a.splice(ei,1); tid2?renderLibrary():loadDateData(); }
-    function aE(type) { if(!allData[selectedDate]) allData[selectedDate]={workout:[]}; allData[selectedDate].workout.push({name:'新動作',isSS:false,sets:[{w:'',r:'',p:'',n:'',d:false}]}); loadDateData(); }
+    function uEx(tid, tplId, ei, f, v) { let a = tplId ? templates.find(t=>t.id===tplId).exercises : allData[selectedDate].workout; a[ei][f] = v; }
+    function uS(tid, tplId, ei, si, f, v) { let a = tplId ? templates.find(t=>t.id===tplId).exercises : allData[selectedDate].workout; a[ei].sets[si][f] = v; }
+    function aS(tid, tplId, ei) { let a = tplId ? templates.find(t=>t.id===tplId).exercises : allData[selectedDate].workout; a[ei].sets.push({w:'',r:'',p:'',n:'',d:false}); tplId?renderLibrary():loadDateData(); }
+    function tSS(tid, tplId, ei) { let a = tplId ? templates.find(t=>t.id===tplId).exercises : allData[selectedDate].workout; a[ei].isSS = !a[ei].isSS; tplId?renderLibrary():loadDateData(); }
+    function dE(tid, tplId, ei) { let a = tplId ? templates.find(t=>t.id===tplId).exercises : allData[selectedDate].workout; a.splice(ei,1); tplId?renderLibrary():loadDateData(); }
+    function addExLogic(tid, tplId) {
+        let a = tplId ? templates.find(t=>t.id===tplId).exercises : (allData[selectedDate] ? allData[selectedDate].workout : (allData[selectedDate]={workout:[]}).workout);
+        a.push({name:'新動作',isSS:false,sets:[{w:'',r:'',p:'',n:'',d:false}]});
+        tplId?renderLibrary():loadDateData();
+    }
     function tC(ei, si) { allData[selectedDate].workout[ei].sets[si].d = !allData[selectedDate].workout[ei].sets[si].d; loadDateData(); }
-    function applyTpl(id) { if(!allData[selectedDate]) allData[selectedDate]={workout:[]}; allData[selectedDate].workout = JSON.parse(JSON.stringify(templates.find(t=>t.id===id).exercises)); switchTab('train', document.querySelectorAll('.nav-item')[0]); loadDateData(); }
-    
-    // --- 共用介面 ---
-    function loadDateData() { const d = allData[selectedDate] || { workout: [], weight: '', fat: '' }; document.getElementById('weight').value = d.weight; document.getElementById('fat').value = d.fat; renderList('train-list', d.workout); }
+    function applyTpl(id) {
+        if(!allData[selectedDate]) allData[selectedDate]={workout:[], weight:'', fat:''};
+        allData[selectedDate].workout = JSON.parse(JSON.stringify(templates.find(t=>t.id===id).exercises));
+        switchTab('train', document.querySelectorAll('.nav-item')[0]);
+        loadDateData(); renderCalendar();
+    }
+    function deleteTpl(id) { if(confirm("確定刪除模板？")) { templates = templates.filter(t=>t.id!==id); renderLibrary(); } }
+
+    function loadDateData() {
+        const d = allData[selectedDate] || { workout: [], weight: '', fat: '' };
+        document.getElementById('weight').value = d.weight;
+        document.getElementById('fat').value = d.fat;
+        document.getElementById('selected-date-label').innerText = selectedDate;
+        renderList('train-list', d.workout);
+    }
     function renderCalendar() {
         const grid = document.getElementById('calendar-days'); document.getElementById('month-label').innerText = `${currentMonth.getFullYear()}年 ${currentMonth.getMonth()+1}月`;
         grid.innerHTML = ''; const first = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).getDay(); const days = new Date(currentMonth.getFullYear(), currentMonth.getMonth()+1, 0).getDate();
@@ -210,4 +223,3 @@
 </script>
 </body>
 </html>
-
